@@ -1,0 +1,16 @@
+# Core web framework
+Django==5.2.3
+
+# MySQL driver (ENGINE = django.db.backends.mysql)
+# Requiere libmysqlclient y headers del sistema.
+mysqlclient>=2.2,<3
+
+# Generación de PDF para los reportes
+reportlab>=4.0
+
+# --- Opcionales ---
+# Si no puedes compilar mysqlclient, puedes usar PyMySQL en su lugar:
+PyMySQL>=1.1
+
+# Despliegue (opcional si vas a producción con Gunicorn):
+gunicorn>=21.2
