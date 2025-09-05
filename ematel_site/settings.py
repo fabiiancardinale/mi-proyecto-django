@@ -5,7 +5,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = "django-insecure-xxx"   # mueve esto a variables de entorno en cuanto puedas
 DEBUG = True
-ALLOWED_HOSTS = ["localhost", "127.0.0.1"]  # agrega tu dominio/IP pública cuando despliegues
+ALLOWED_HOSTS = ["localhost", "127.0.0.1","*","82.25.79.89"]  # agrega tu dominio/IP pública cuando despliegues
 
 INSTALLED_APPS = [
     "monitoring.apps.MonitoringConfig",
