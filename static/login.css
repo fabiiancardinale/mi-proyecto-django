@@ -1,0 +1,443 @@
+/* === LOGIN PAGE EMATEL STYLE === */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Branding EMATEL */
+.company-branding {
+  margin-bottom: 2rem;
+  position: relative;
+  z-index: 1;
+}
+
+.company-logo {
+  margin: 0 auto 1rem;
+  animation: logoFloat 3s ease-in-out infinite;
+}
+
+@keyframes logoFloat {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-5px); }
+}
+
+.company-name {
+  font-size: 2.5rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #0369a1, #0284c7, #0ea5e9);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: 2px;
+  margin-bottom: 0.5rem;
+  text-shadow: 0 2px 4px rgba(3, 105, 161, 0.1);
+}
+
+.company-subtitle {
+  font-size: 0.9rem;
+  color: #64748b;
+  font-weight: 500;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background: linear-gradient(-45deg, #0f172a, #1e293b, #0369a1, #0284c7);
+  background-size: 400% 400%;
+  animation: gradientShift 15s ease infinite;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Animación de fondo */
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Partículas de fondo */
+body::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: 
+      radial-gradient(circle at 25% 25%, rgba(59, 130, 246, 0.1) 2px, transparent 2px),
+      radial-gradient(circle at 75% 75%, rgba(147, 197, 253, 0.1) 1px, transparent 1px);
+  background-size: 100px 100px, 60px 60px;
+  animation: particleFloat 20s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes particleFloat {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+/* Caja de login */
+.login-container {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  padding: 3rem 2.5rem;
+  border-radius: 24px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 
+      0 20px 40px rgba(3, 105, 161, 0.15),
+      0 1px 3px rgba(15, 23, 42, 0.1),
+      inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  text-align: center;
+  position: relative;
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  animation: slideIn 0.8s ease-out;
+  transition: all 0.3s ease;
+}
+
+.login-container:hover {
+  transform: translateY(-5px);
+  box-shadow: 
+      0 25px 50px rgba(3, 105, 161, 0.2),
+      0 1px 3px rgba(15, 23, 42, 0.1),
+      inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+@keyframes slideIn {
+  from {
+      opacity: 0;
+      transform: translateY(30px);
+  }
+  to {
+      opacity: 1;
+      transform: translateY(0);
+  }
+}
+
+/* Decoraciones geométricas */
+.login-container::before {
+  content: '';
+  position: absolute;
+  top: -100px;
+  right: -100px;
+  width: 200px;
+  height: 200px;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(147, 197, 253, 0.1));
+  border-radius: 50%;
+  animation: rotate 20s linear infinite;
+}
+
+.login-container::after {
+  content: '';
+  position: absolute;
+  bottom: -75px;
+  left: -75px;
+  width: 150px;
+  height: 150px;
+  background: linear-gradient(135deg, rgba(3, 105, 161, 0.08), rgba(14, 165, 233, 0.08));
+  border-radius: 50%;
+  animation: rotate 25s linear infinite reverse;
+}
+
+@keyframes rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.login-container h1 {
+  margin-bottom: 2rem;
+  color: #0f172a;
+  font-size: 2rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #0369a1, #0284c7);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  position: relative;
+  z-index: 1;
+}
+
+/* Campos de formulario con iconos */
+.login-container .form-row {
+  margin-bottom: 1.5rem;
+  text-align: left;
+  position: relative;
+  z-index: 1;
+}
+
+.input-group {
+  position: relative;
+}
+
+.login-container .input {
+  width: 100%;
+  padding: 1rem 1rem 1rem 3.5rem;
+  border: 2px solid #cbd5e1;
+  border-radius: 12px;
+  font-size: 1rem;
+  background: rgba(255, 255, 255, 0.9);
+  transition: all 0.3s ease;
+  outline: none;
+  position: relative;
+}
+
+.input-icon {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #64748b;
+  transition: all 0.3s ease;
+  z-index: 2;
+}
+
+.login-container .input:focus {
+  border-color: #0369a1;
+  background: rgba(255, 255, 255, 1);
+  box-shadow: 
+      0 0 0 4px rgba(3, 105, 161, 0.1),
+      0 4px 12px rgba(3, 105, 161, 0.15);
+  transform: translateY(-2px);
+}
+
+.login-container .input:focus + .input-icon {
+  color: #0369a1;
+  transform: translateY(-50%) scale(1.1);
+}
+
+/* Etiquetas flotantes */
+.floating-label {
+  position: absolute;
+  left: 3.5rem;
+  top: 1rem;
+  color: #64748b;
+  font-size: 1rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  pointer-events: none;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 0 0.5rem;
+  border-radius: 4px;
+}
+
+.login-container .input:focus + .input-icon + .floating-label,
+.login-container .input:not(:placeholder-shown) + .input-icon + .floating-label {
+  top: -0.6rem;
+  left: 2.5rem;
+  font-size: 0.8rem;
+  color: #0369a1;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 1);
+}
+
+/* Botón con icono */
+.login-container .btn {
+  width: 100%;
+  padding: 1rem;
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #0369a1, #0284c7, #0ea5e9);
+  color: white;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  margin-top: 1rem;
+  z-index: 1;
+  box-shadow: 0 6px 20px rgba(3, 105, 161, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.btn-text {
+  transition: transform 0.3s ease;
+}
+
+.btn-icon {
+  transition: transform 0.3s ease;
+}
+
+.login-container .btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.login-container .btn:hover {
+  background: linear-gradient(135deg, #0284c7, #0ea5e9, #38bdf8);
+  transform: translateY(-3px);
+  box-shadow: 0 12px 30px rgba(3, 105, 161, 0.4);
+}
+
+.login-container .btn:hover .btn-text {
+  transform: translateX(-3px);
+}
+
+.login-container .btn:hover .btn-icon {
+  transform: translateX(3px);
+}
+
+.login-container .btn:hover::before {
+  left: 100%;
+}
+
+.login-container .btn:active {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(3, 105, 161, 0.3);
+}
+
+/* Mensajes de error con icono */
+.login-container .alert.error {
+  background: linear-gradient(135deg, #fef2f2, #fee2e2);
+  border: 1px solid #fca5a5;
+  color: #dc2626;
+  padding: 1rem;
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  animation: shake 0.5s ease-in-out;
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.login-container .alert.error svg {
+  flex-shrink: 0;
+}
+
+/* Footer del login */
+.login-footer {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(3, 105, 161, 0.1);
+  position: relative;
+  z-index: 1;
+}
+
+.forgot-password {
+  color: #0369a1;
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.forgot-password:hover {
+  color: #0284c7;
+  text-decoration: underline;
+  transform: translateY(-1px);
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+
+/* Efectos adicionales para inputs */
+.login-container .input:hover {
+  border-color: #0ea5e9;
+  box-shadow: 0 2px 8px rgba(3, 105, 161, 0.1);
+}
+
+/* Indicador de carga en el botón */
+.login-container .btn.loading {
+  background: linear-gradient(135deg, #64748b, #94a3b8);
+  cursor: not-allowed;
+}
+
+.login-container .btn.loading::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  margin: -10px 0 0 -10px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top: 2px solid white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .login-container {
+      margin: 1rem;
+      padding: 2rem 1.5rem;
+  }
+  
+  .login-container h1 {
+      font-size: 1.8rem;
+  }
+}
+
+/* Mejoras de accesibilidad */
+.login-container .input:invalid {
+  border-color: #ef4444;
+}
+
+.login-container .input:invalid:focus {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.1);
+}
+
+/* Estados de focus mejorados */
+.login-container .btn:focus-visible {
+  outline: 2px solid #0369a1;
+  outline-offset: 2px;
+}
+
+.login-container .input:focus-visible {
+  outline: none;
+}
+
+/* Animación sutil en labels */
+.login-container label {
+  transition: all 0.3s ease;
+}
+
+.login-container .input:focus ~ label {
+  color: #0369a1;
+  transform: scale(1.05);
+}
+
+/* Efecto adicional en el contenedor */
+.login-container {
+  position: relative;
+}
+
+.login-container::before {
+  z-index: -1;
+}
+
+.login-container::after {
+  z-index: -1;
+}

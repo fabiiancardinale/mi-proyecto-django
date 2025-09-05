@@ -1,0 +1,829 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'admin.css' %}">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="admin-dashboard">
+  
+  <!-- Header del Dashboard -->
+  <div class="dashboard-header">
+    <div class="header-content">
+      <div class="header-left">
+        <h1 class="dashboard-title">
+          <i class="fas fa-shield-alt"></i>
+          Panel de Administración
+        </h1>
+        <p class="dashboard-subtitle">Gestiona tu sistema desde aquí</p>
+      </div>
+      <div class="header-actions">
+        <div class="user-profile">
+          <div class="user-avatar">
+            <i class="fas fa-user-shield"></i>
+          </div>
+          <div class="user-info">
+            <span class="user-name">{{ request.user.username }}</span>
+            <span class="user-role">Administrador</span>
+          </div>
+        </div>
+        <a href="{% url 'logout' %}" class="btn btn-outline-danger">
+          <i class="fas fa-sign-out-alt"></i>
+          <span>Cerrar Sesión</span>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="dashboard-layout">
+    <!-- Sidebar Mejorado -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h3>
+          <i class="fas fa-tachometer-alt"></i>
+          Navegación
+        </h3>
+      </div>
+      
+      <nav class="sidebar-nav">
+        <a href="#gestion-usuarios" class="nav-item">
+          <i class="fas fa-users"></i>
+          <span>Usuarios</span>
+          <span class="badge">24</span>
+        </a>
+        <a href="#comparativas" class="nav-item">
+          <i class="fas fa-chart-line"></i>
+          <span>Reportes</span>
+        </a>
+        <a href="#agregar-consumo" class="nav-item">
+          <i class="fas fa-database"></i>
+          <span>Base de Datos</span>
+        </a>
+      </nav>
+      
+
+      <div class="sidebar-footer">
+        <div class="system-status">
+          <div class="status-indicator online"></div>
+          <span>Sistema Operativo</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Contenido Principal -->
+    <main class="main-content">
+        <!-- Panel de Gestión de Usuarios -->
+        <div id="gestion-usuarios" class="content-section">
+            <div class="section-header">
+              <h2>
+                <i class="fas fa-users-cog"></i>
+                Gestión de Usuarios
+              </h2>
+              <div class="section-actions">
+                <a href="{% url 'create_user' %}" class="btn btn-success">
+                  <i class="fas fa-plus"></i> Nuevo Usuario
+                </a>
+                
+                <button class="btn btn-secondary">
+                  <i class="fas fa-download"></i>
+                  Exportar
+                </button>
+              </div>
+            </div>
+    
+            <!-- Filtros y Búsqueda -->
+            <form method="get" class="table-controls" style="display:flex;gap:12px;align-items:center;">
+              <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" name="q" value="{{ q }}" placeholder="Buscar usuarios..." class="search-input">
+              </div>
+              <div class="filter-controls" style="display:flex;gap:8px;">
+                <select class="filter-select" name="role">
+                  <option value="">Todos los roles</option>
+                  <option value="Administrador" {% if role_filter == "Administrador" %}selected{% endif %}>Administrador</option>
+                  <option value="Usuario" {% if role_filter == "Usuario" %}selected{% endif %}>Usuario</option>
+                </select>
+                <select class="filter-select" name="status">
+                  <option value="">Estado: Todos</option>
+                  <option value="activos" {% if status_filter == "activos" %}selected{% endif %}>Activos</option>
+                  <option value="inactivos" {% if status_filter == "inactivos" %}selected{% endif %}>Inactivos</option>
+                </select>
+                <button class="btn btn-secondary" type="submit">
+                  <i class="fas fa-filter"></i> Filtrar
+                </button>
+              </div>
+            </form>
+
+    
+<!-- Tabla de Usuarios (dinámica) -->
+<div class="table-container">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th><input type="checkbox" class="select-all"></th>
+        <th>
+          <div class="th-content">
+            <span>ID</span><i class="fas fa-sort"></i>
+          </div>
+        </th>
+        <th>
+          <div class="th-content">
+            <span>Usuario</span><i class="fas fa-sort"></i>
+          </div>
+        </th>
+        <th>
+          <div class="th-content">
+            <span>Correo Electrónico</span><i class="fas fa-sort"></i>
+          </div>
+        </th>
+        <th>
+          <div class="th-content">
+            <span>Rol</span><i class="fas fa-sort"></i>
+          </div>
+        </th>
+        <th>
+          <div class="th-content">
+            <span>Estado</span><i class="fas fa-sort"></i>
+          </div>
+        </th>
+        <th>
+          <div class="th-content">
+            <span>Último Acceso</span><i class="fas fa-sort"></i>
+          </div>
+        </th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      {% if page_obj.object_list %}
+        {% for u in page_obj %}
+          <tr>
+            <td><input type="checkbox" value="{{ u.id }}"></td>
+            <td><span class="user-id">#{{ u.id|stringformat:"03d" }}</span></td>
+
+            <td>
+              <div class="user-cell">
+                <div class="user-avatar-small">{{ u.username|first|upper }}</div>
+                <div class="user-details">
+                  <span class="user-name">{{ u.username }}</span>
+                  <span class="user-created">Creado: {{ u.date_joined|date:"d/m/Y" }}</span>
+                </div>
+              </div>
+            </td>
+
+            <td>{{ u.email|default:"—" }}</td>
+
+            <td>
+              <span class="role-badge {% if u.role == 'Administrador' %}admin{% else %}user{% endif %}">
+                {{ u.role|default:"Usuario" }}
+              </span>
+            </td>
+
+            <td>
+              {% if u.is_active %}
+                <span class="status-badge active">Activo</span>
+              {% else %}
+                <span class="status-badge inactive">Inactivo</span>
+              {% endif %}
+            </td>
+
+            <td>
+              <div class="last-access">
+                {% if u.last_login %}
+                  <span>{{ u.last_login|date:"d/m/Y H:i" }}</span>
+                  <small>Hace {{ u.last_login|timesince }}</small>
+                {% else %}
+                  <span>—</span>
+                  <small>Sin registro</small>
+                {% endif %}
+              </div>
+            </td>
+
+            <td>
+              <div class="action-buttons">
+                {# Descomenta cuando crees estas vistas y urls #}
+                {# <a href="{% url 'user_detail' u.id %}" class="action-btn view" title="Ver detalles"><i class="fas fa-eye"></i></a> #}
+                {# <a href="{% url 'user_edit' u.id %}" class="action-btn edit" title="Editar"><i class="fas fa-edit"></i></a> #}
+                <button class="action-btn delete" title="Eliminar"><i class="fas fa-trash"></i></button>
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+      {% else %}
+        <tr>
+          <td colspan="8" style="text-align:center;color:#64748b;padding:16px;">
+            No se encontraron usuarios con esos criterios.
+          </td>
+        </tr>
+      {% endif %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Paginación simple -->
+<div class="pagination-container">
+  <div class="pagination-info">
+    Mostrando {{ page_obj.start_index }}-{{ page_obj.end_index }} de {{ page_obj.paginator.count }} usuarios
+  </div>
+
+  <div class="pagination">
+    <button class="page-btn {% if not page_obj.has_previous %}disabled{% endif %}"
+            {% if page_obj.has_previous %}onclick="location.href='?page={{ page_obj.previous_page_number }}'"{% endif %}>
+      <i class="fas fa-chevron-left"></i>
+    </button>
+
+    {% for num in page_obj.paginator.page_range %}
+      {% if num == page_obj.number %}
+        <button class="page-btn active">{{ num }}</button>
+      {% else %}
+        <button class="page-btn" onclick="location.href='?page={{ num }}'">{{ num }}</button>
+      {% endif %}
+    {% endfor %}
+
+    <button class="page-btn {% if not page_obj.has_next %}disabled{% endif %}"
+            {% if page_obj.has_next %}onclick="location.href='?page={{ page_obj.next_page_number }}'"{% endif %}>
+      <i class="fas fa-chevron-right"></i>
+    </button>
+  </div>
+</div>
+
+              </table>
+            </div>
+    
+            <div class="pagination-container">
+              <div class="pagination-info">
+                Mostrando {{ page_obj.start_index }}-{{ page_obj.end_index }} de {{ paginator.count }} usuarios
+              </div>
+            
+              <div class="pagination">
+                {% with qstr="q="|add:q|urlencode|add:"&role="|add:role_filter|urlencode|add:"&status="|add:status_filter|urlencode %}
+                  <button class="page-btn {% if not page_obj.has_previous %}disabled{% endif %}"
+                          {% if page_obj.has_previous %}onclick="location.href='?{{ qstr }}&page={{ page_obj.previous_page_number }}'"{% endif %}>
+                    <i class="fas fa-chevron-left"></i>
+                  </button>
+            
+                  {% for num in page_obj.paginator.page_range %}
+                    {% if num == page_obj.number %}
+                      <button class="page-btn active">{{ num }}</button>
+                    {% elif num <= 2 or num > page_obj.paginator.num_pages|add:"-2" or num >= page_obj.number|add:"-1" and num <= page_obj.number|add:"1" %}
+                      <button class="page-btn" onclick="location.href='?{{ qstr }}&page={{ num }}'">{{ num }}</button>
+                    {% elif forloop.first or forloop.last %}
+                      <span class="page-dots">...</span>
+                    {% endif %}
+                  {% endfor %}
+            
+                  <button class="page-btn {% if not page_obj.has_next %}disabled{% endif %}"
+                          {% if page_obj.has_next %}onclick="location.href='?{{ qstr }}&page={{ page_obj.next_page_number }}'"{% endif %}>
+                    <i class="fas fa-chevron-right"></i>
+                  </button>
+                {% endwith %}
+              </div>
+            </div>
+            
+    
+      <!-- Estadísticas Rápidas (enfocadas a calderas) -->
+      <div class="stats-overview">
+        <div class="stat-card">
+          <div class="stat-icon bg-orange">
+            <i class="fas fa-temperature-high"></i>
+          </div>
+          <div class="stat-details">
+            <h3>178°C</h3>
+            <p>Temp. Promedio (últ. hora)</p>
+            <span class="stat-trend positive">
+              <i class="fas fa-arrow-up"></i> +2.1%
+            </span>
+          </div>
+        </div>
+        
+        <div class="stat-card">
+          <div class="stat-icon bg-purple">
+            <i class="fas fa-burn"></i>
+          </div>
+          <div class="stat-details">
+            <h3>92.5%</h3>
+            <p>Eficiencia térmica</p>
+            <span class="stat-trend neutral">
+              <i class="fas fa-minus"></i> Estable
+            </span>
+          </div>
+        </div>
+        
+        <div class="stat-card">
+          <div class="stat-icon bg-green">
+            <i class="fas fa-water"></i>
+          </div>
+          <div class="stat-details">
+            <h3>12.1 bar</h3>
+            <p>Presión media</p>
+            <span class="stat-trend negative">
+              <i class="fas fa-arrow-down"></i> -0.4%
+            </span>
+          </div>
+        </div>
+        
+        <div class="stat-card">
+          <div class="stat-icon bg-blue">
+            <i class="fas fa-gauge"></i>
+          </div>
+          <div class="stat-details">
+            <h3>78%</h3>
+            <p>Carga del sistema</p>
+            <span class="stat-trend positive">
+              <i class="fas fa-arrow-up"></i> +4.8%
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Estado por Caldera -->
+      <div class="content-section">
+        <div class="section-header">
+          <h2>
+            <i class="fas fa-fire"></i>
+            Estado de Calderas
+          </h2>
+          <div class="section-actions">
+            <button class="btn btn-secondary">
+              <i class="fas fa-rotate"></i>
+              Actualizar
+            </button>
+          </div>
+        </div>
+
+        <div class="boiler-grid">
+          <div class="boiler-card">
+            <div class="title"><i class="fas fa-fire"></i>Caldera #1</div>
+            <div class="boiler-meta">
+              <span>Últ. lectura: 14:30</span>
+              <span class="state-badge state-ok"><i class="fas fa-circle-check"></i> OK</span>
+            </div>
+            <div class="kpis">
+              <div class="kpi"><div class="label">Temperatura</div><div class="value">182°C</div></div>
+              <div class="kpi"><div class="label">Presión</div><div class="value">12.8 bar</div></div>
+              <div class="kpi"><div class="label">Eficiencia</div><div class="value">93%</div></div>
+            </div>
+            <div style="margin-top:.75rem;">
+              <div class="label" style="margin-bottom:.25rem;">Carga</div>
+              <div class="bar"><span style="width: 76%;"></span></div>
+            </div>
+          </div>
+
+          <div class="boiler-card">
+            <div class="title"><i class="fas fa-fire"></i>Caldera #2</div>
+            <div class="boiler-meta">
+              <span>Últ. lectura: 14:30</span>
+              <span class="state-badge state-warn"><i class="fas fa-triangle-exclamation"></i> Atención</span>
+            </div>
+            <div class="kpis">
+              <div class="kpi"><div class="label">Temperatura</div><div class="value">171°C</div></div>
+              <div class="kpi"><div class="label">Presión</div><div class="value">12.1 bar</div></div>
+              <div class="kpi"><div class="label">Eficiencia</div><div class="value">90%</div></div>
+            </div>
+            <div style="margin-top:.75rem;">
+              <div class="label" style="margin-bottom:.25rem;">Carga</div>
+              <div class="bar"><span style="width: 64%;"></span></div>
+            </div>
+          </div>
+
+          <div class="boiler-card">
+            <div class="title"><i class="fas fa-fire"></i>Caldera #3</div>
+            <div class="boiler-meta">
+              <span>Últ. lectura: 14:30</span>
+              <span class="state-badge state-down"><i class="fas fa-octagon-xmark"></i> Fuera de servicio</span>
+            </div>
+            <div class="kpis">
+              <div class="kpi"><div class="label">Temperatura</div><div class="value">—</div></div>
+              <div class="kpi"><div class="label">Presión</div><div class="value">—</div></div>
+              <div class="kpi"><div class="label">Eficiencia</div><div class="value">—</div></div>
+            </div>
+            <div style="margin-top:.75rem;">
+              <div class="label" style="margin-bottom:.25rem;">Carga</div>
+              <div class="bar"><span style="width: 0%;"></span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Comparativas -->
+      <div id="comparativas" class="content-section">
+        <!-- En la cabecera de Comparativas -->
+<div class="section-header">
+  <h2>
+    <i class="fas fa-arrows-left-right"></i>
+    Comparativas (Año {{ chart_data.years.prev }} vs {{ chart_data.years.now }})
+  </h2>
+  <div class="section-actions" style="display:flex;gap:.5rem;align-items:center;">
+    <label for="userFilter" class="sr-only">Usuario</label>
+    <select id="userFilter" class="filter-select">
+      <option value="">Todos los usuarios</option>
+      {% for u in users_for_filter %}
+        <option value="{{ u.id }}">{{ u.username }} (ID {{ u.id }})</option>
+      {% endfor %}
+    </select>
+    <span id="chartsLoader" style="display:none;font-size:.9rem;color:#64748b;">
+      <i class="fas fa-spinner fa-spin"></i> Cargando...
+    </span>
+  </div>
+</div>
+
+        <div style="padding:1.25rem; display:grid; gap:1.25rem; grid-template-columns: 1fr;">
+
+            <div class="compare-card">
+                <div class="compare-head">
+                  <div class="title"><i class="fas fa-water"></i> Consumo de Agua (m³/mes)</div>
+                  <span class="trend eq"><i class="fas fa-equals"></i> Mensual</span>
+                </div>
+                <div class="chart-wrap">
+                  <canvas id="chartAgua"></canvas>
+                </div>
+              </div>
+              
+              <div class="compare-card">
+                <div class="compare-head">
+                  <div class="title"><i class="fas fa-fire-flame-simple"></i> Consumo de Gas (m³/mes)</div>
+                  <span class="trend eq"><i class="fas fa-equals"></i> Mensual</span>
+                </div>
+                <div class="chart-wrap">
+                  <canvas id="chartGas"></canvas>
+                </div>
+              </div>
+              
+
+        </div>
+      </div>
+
+      {{ chart_data|json_script:"chart-data" }}
+
+    
+      <section id="agregar-consumo" class="main-panel" style="margin-top:24px;">
+        <div class="section-header">
+          <h2 class="section-title"><i class="fa-solid fa-plus"></i> Agregar Consumo (Admin)</h2>
+        </div>
+      
+        <div class="section-content">
+          <form method="post" class="grid-form">
+            {% csrf_token %}
+      
+            <div class="form-group">
+              <label class="lbl">Usuario</label>
+              {{ admin_form.user }}
+              {% if admin_form.user.errors %}<div class="err">{{ admin_form.user.errors|striptags }}</div>{% endif %}
+            </div>
+      
+            <div class="form-group">
+              <label class="lbl">Año</label>
+              {{ admin_form.year }}
+              {% if admin_form.year.errors %}<div class="err">{{ admin_form.year.errors|striptags }}</div>{% endif %}
+            </div>
+      
+            <div class="form-group">
+              <label class="lbl">Mes</label>
+              {{ admin_form.month_choice }}
+              {% if admin_form.month_choice.errors %}<div class="err">{{ admin_form.month_choice.errors|striptags }}</div>{% endif %}
+            </div>
+      
+            <div class="form-group">
+              <label class="lbl">Día</label>
+              {{ admin_form.day }}
+              {% if admin_form.day.errors %}<div class="err">{{ admin_form.day.errors|striptags }}</div>{% endif %}
+            </div>
+      
+            <div class="form-group">
+              <label class="lbl">M³ Agua</label>
+              {{ admin_form.m3_water }}
+              {% if admin_form.m3_water.errors %}<div class="err">{{ admin_form.m3_water.errors|striptags }}</div>{% endif %}
+            </div>
+      
+            <div class="form-group">
+              <label class="lbl">M³ Gas</label>
+              {{ admin_form.m3_gas }}
+              {% if admin_form.m3_gas.errors %}<div class="err">{{ admin_form.m3_gas.errors|striptags }}</div>{% endif %}
+            </div>
+      
+            {% if admin_form.fields.cost %}
+              <div class="form-group">
+                <label class="lbl">Costo (CLP)</label>
+                {{ admin_form.cost }}
+                {% if admin_form.cost.errors %}<div class="err">{{ admin_form.cost.errors|striptags }}</div>{% endif %}
+              </div>
+            {% endif %}
+      
+            <div class="form-group" style="align-self:end">
+              <button type="submit" class="btn btn-primary">
+                <i class="fa-solid fa-floppy-disk"></i> Guardar
+              </button>
+            </div>
+          </form>
+        </div>
+      
+        <div class="section-header" style="margin-top:24px;">
+          <h2 class="section-title">
+            <i class="fa-solid fa-fire"></i>
+            Consumo de Gas y Agua
+            {% if selected_user_id %}<small style="font-weight:400;color:var(--text-muted);">· Usuario ID {{ selected_user_id }}</small>{% endif %}
+          </h2>
+        </div>
+      
+        <div class="section-content">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Año</th><th>Mes</th><th>M³ Agua</th><th>M³ Gas</th><th>Costo (CLP)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% if rows %}
+                {% for r in rows %}
+                  <tr>
+                    <td>{{ r.year }}</td>
+                    <td>{{ r.month_label }}</td>
+                    <td>{{ r.m3_water|default:"—" }}</td>
+                    <td>{{ r.m3_gas|default:"—" }}</td>
+                    <td>{% if r.cost is not None %}${{ r.cost|floatformat:0 }}{% else %}—{% endif %}</td>
+                  </tr>
+                {% endfor %}
+              {% else %}
+                <tr><td colspan="5" style="text-align:center;color:var(--text-muted);">
+                  {% if selected_user_id %}Sin registros para este usuario.{% else %}Selecciona un usuario o guarda consumo para verlo aquí.{% endif %}
+                </td></tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+      
+      
+    </main>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+  // referenciar instancias creadas arriba
+  let chartAguaInstance = null;
+  let chartGasInstance = null;
+
+  // Hookeamos las instancias al crearlas
+  (function(){
+    const data = JSON.parse(document.getElementById('chart-data').textContent);
+
+    const css = getComputedStyle(document.documentElement);
+    const c1 = css.getPropertyValue('--secondary-color').trim() || '#1e293b';
+    const c2 = css.getPropertyValue('--accent-color').trim() || '#0ea5e9';
+    const grid = css.getPropertyValue('--border-light').trim() || '#e2e8f0';
+    const text = css.getPropertyValue('--text-primary').trim() || '#0f172a';
+    const alpha = (hex, a) => {
+      const m = hex.replace('#','');
+      const r = parseInt(m.substring(0,2),16);
+      const g = parseInt(m.substring(2,4),16);
+      const b = parseInt(m.substring(4,6),16);
+      return `rgba(${r},${g},${b},${a})`;
+    };
+    const baseOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: { grid: { color: grid }, ticks: { color: text }},
+        y: { grid: { color: grid }, ticks: { color: text }, beginAtZero: true }
+      },
+      plugins: {
+        legend: { labels: { color: text }},
+        tooltip: { mode: 'index', intersect: false }
+      }
+    };
+
+    // === Agua (barras comparativas) ===
+    const ctxAgua = document.getElementById('chartAgua').getContext('2d');
+    chartAguaInstance = new Chart(ctxAgua, {
+      type: 'bar',
+      data: {
+        labels: data.labels,
+        datasets: [
+          {
+            label: `Agua ${data.years.prev}`,
+            data: data.water.prev,
+            backgroundColor: alpha(c1, .35),
+            borderColor: c1,
+            borderWidth: 2
+          },
+          {
+            label: `Agua ${data.years.now}`,
+            data: data.water.now,
+            backgroundColor: alpha(c2, .35),
+            borderColor: c2,
+            borderWidth: 2
+          }
+        ]
+      },
+      options: {
+        ...baseOptions,
+        scales: {
+          ...baseOptions.scales,
+          y: { ...baseOptions.scales.y, title: { display: true, text: 'm³' } }
+        }
+      }
+    });
+
+    // === Gas (líneas comparativas) ===
+    const ctxGas = document.getElementById('chartGas').getContext('2d');
+    chartGasInstance = new Chart(ctxGas, {
+      type: 'line',
+      data: {
+        labels: data.labels,
+        datasets: [
+          {
+            label: `Gas ${data.years.prev}`,
+            data: data.gas.prev,
+            borderColor: c1,
+            backgroundColor: alpha(c1, .15),
+            borderWidth: 3,
+            fill: true,
+            tension: .35,
+            pointRadius: 2
+          },
+          {
+            label: `Gas ${data.years.now}`,
+            data: data.gas.now,
+            borderColor: c2,
+            backgroundColor: alpha(c2, .15),
+            borderWidth: 3,
+            fill: true,
+            tension: .35,
+            pointRadius: 2
+          }
+        ]
+      },
+      options: {
+        ...baseOptions,
+        scales: {
+          ...baseOptions.scales,
+          y: { ...baseOptions.scales.y, title: { display: true, text: 'm³' } }
+        }
+      }
+    });
+  })();
+
+  // Actualizar los charts con nuevos datos
+  function updateChartsWith(data) {
+    if (!chartAguaInstance || !chartGasInstance) return;
+
+    // labels
+    chartAguaInstance.data.labels = data.labels;
+    chartGasInstance.data.labels  = data.labels;
+
+    // agua
+    chartAguaInstance.data.datasets[0].data = data.water.prev;
+    chartAguaInstance.data.datasets[1].data = data.water.now;
+
+    // gas
+    chartGasInstance.data.datasets[0].data = data.gas.prev;
+    chartGasInstance.data.datasets[1].data = data.gas.now;
+
+    chartAguaInstance.update();
+    chartGasInstance.update();
+
+    // Actualizar el título (años) visual si quieres
+    const header = document.querySelector('.section-header h2');
+    if (header) header.innerHTML = `<i class="fas fa-arrows-left-right"></i> Comparativas (Año ${data.years.prev} vs ${data.years.now})`;
+  }
+
+  // Listener del selector
+  document.addEventListener('DOMContentLoaded', () => {
+    const userFilter = document.getElementById('userFilter');
+    const loader = document.getElementById('chartsLoader');
+
+    if (!userFilter) return;
+
+    userFilter.addEventListener('change', async (e) => {
+      const userId = e.target.value || '';
+      loader.style.display = 'inline';
+
+      try {
+        const url = new URL('{% url "admin_chart_data" %}', window.location.origin);
+        if (userId) url.searchParams.set('user_id', userId); // si vacío => “Todos”
+        const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+        const payload = await res.json();
+        updateChartsWith(payload.chart_data);
+      } catch (err) {
+        console.error(err);
+        alert('No se pudo cargar la data del usuario.');
+      } finally {
+        loader.style.display = 'none';
+      }
+    });
+  });
+</script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const topSel  = document.getElementById('userFilter');
+    const formSel = document.getElementById('{{ admin_form.user.id_for_label }}');
+  
+    {% if selected_user_id %} if (formSel) formSel.value = "{{ selected_user_id }}"; {% endif %}
+  
+    topSel?.addEventListener('change', (e) => {
+      const id = e.target.value || '';
+      const url = new URL(location.href);
+      if (id) url.searchParams.set('selected_user', id);
+      else url.searchParams.delete('selected_user');
+      location.href = url.toString();
+    });
+  
+    topSel?.addEventListener('change', (e) => { if (formSel) formSel.value = e.target.value; });
+  });
+  </script>
+  
+
+<script>
+  // === FUNCIONALIDAD INTERACTIVA === 
+  document.addEventListener('DOMContentLoaded', function() {
+    // Selección múltiple en tabla
+    const selectAll = document.querySelector('.select-all');
+    const checkboxes = document.querySelectorAll('tbody input[type="checkbox"]');
+    if (selectAll) {
+      selectAll.addEventListener('change', function() {
+        checkboxes.forEach(checkbox => { checkbox.checked = this.checked; });
+      });
+    }
+    // Búsqueda en tiempo real
+    const searchInput = document.querySelector('.search-input');
+    if (searchInput) {
+      searchInput.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        const rows = document.querySelectorAll('.data-table tbody tr');
+        rows.forEach(row => {
+          const text = row.textContent.toLowerCase();
+          if (text.includes(searchTerm)) {
+            row.style.display = '';
+            row.style.animation = 'fadeInUp 0.3s ease';
+          } else {
+            row.style.display = 'none';
+          }
+        });
+      });
+    }
+    // Ordenamiento de tabla (visual)
+    const sortHeaders = document.querySelectorAll('.th-content');
+    sortHeaders.forEach(header => {
+      header.addEventListener('click', function() {
+        const icon = this.querySelector('i');
+        icon.classList.toggle('fa-sort');
+        icon.classList.toggle('fa-sort-up');
+      });
+    });
+    // Confirmación para eliminar
+    const deleteButtons = document.querySelectorAll('.action-btn.delete');
+    deleteButtons.forEach(btn => {
+      btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        if (confirm('¿Estás seguro de que deseas eliminar este usuario?')) {
+          this.closest('tr').style.animation = 'fadeOut 0.3s ease';
+          setTimeout(() => { this.closest('tr').remove(); }, 300);
+        }
+      });
+    });
+    // Animación de entrada
+    const animateElements = document.querySelectorAll('.stat-card, .nav-item, .activity-item');
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.style.opacity = '1';
+          entry.target.style.transform = 'translateY(0)';
+        }
+      });
+    });
+    animateElements.forEach(el => {
+      el.style.opacity = '0';
+      el.style.transform = 'translateY(20px)';
+      el.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+      observer.observe(el);
+    });
+    // Simulación de actualización de KPIs
+    function updateStats() {
+      const statValues = document.querySelectorAll('.stat-details h3');
+      statValues.forEach(stat => {
+        if (Math.random() > 0.8) {
+          stat.style.animation = 'pulse 0.5s ease';
+          setTimeout(() => { stat.style.animation = ''; }, 500);
+        }
+      });
+    }
+    setInterval(updateStats, 30000);
+  });
+
+  // Animación fadeOut para eliminaciones
+  const fadeOutKeyframes = `
+    @keyframes fadeOut {
+      from { opacity: 1; transform: scale(1); }
+      to { opacity: 0; transform: scale(0.95); }
+    }
+  `;
+  const style = document.createElement('style');
+  style.textContent = fadeOutKeyframes;
+  document.head.appendChild(style);
+</script>
+{% endblock %}

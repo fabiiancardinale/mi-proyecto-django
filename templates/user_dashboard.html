@@ -1,0 +1,703 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Panel de Usuario</title>
+
+  <!-- Iconos -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <link rel="stylesheet" href="{% static 'user.css' %}">
+</head>
+<body>
+  <div class="dashboard">
+    <div class="container">
+      <!-- Header -->
+      <header class="header fade-in">
+        <div class="header-content">
+          <div class="user-section">
+            <div class="avatar">
+              {% with uname=request.user.username|default:"U" %}
+                {{ uname|slice:":2"|upper }}
+              {% endwith %}
+            </div>
+            <div class="user-details">
+              <h1>
+                ¡Hola,
+                {% if request.user.first_name or request.user.last_name %}
+                  {{ request.user.first_name }} {{ request.user.last_name }}
+                {% else %}
+                  {{ request.user.username }}
+                {% endif %}
+                !
+              </h1>
+              <p class="subtitle">Bienvenido de vuelta a tu panel de control</p>
+            </div>
+          </div>
+
+          <div class="header-actions">
+            <button class="btn btn-ghost" id="themeToggle">
+              <i class="fa-solid fa-circle-half-stroke"></i>
+              Tema
+            </button>
+            <button class="btn btn-primary">
+              <i class="fa-solid fa-bell"></i>
+              Notificaciones
+            </button>
+            <a href="{% url 'logout' %}" class="btn btn-danger">
+              <i class="fa-solid fa-right-from-bracket"></i>
+              Cerrar sesión
+            </a>
+          </div>
+        </div>
+      </header>
+      <!-- ===== Monitoreo de Calderas (nuevo) ===== -->
+<section id="monitoreo-calderas" class="main-panel" style="margin-top:16px;">
+  <div class="section-header">
+    <h2 class="section-title">
+      <i class="fa-solid fa-fire"></i>
+      Monitoreo de Calderas
+    </h2>
+  </div>
+
+  <div class="section-content" style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
+    {% if request.user.profile.link %}
+      <a href="{{ request.user.profile.link }}" target="_blank" rel="noopener"
+         class="btn btn-primary" style="min-width:220px;justify-content:center;">
+        <i class="fa-solid fa-gauge-high"></i> Ver caldera ahora
+      </a>
+      <span class="stat-change positive">
+        <i class="fa-solid fa-circle-info"></i>
+        Acceso rápido al panel de monitoreo de tu caldera.
+      </span>
+    {% else %}
+      <div class="stat-card warning" style="max-width:520px;">
+        <div class="stat-header">
+          <div class="stat-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+        </div>
+        <div class="stat-value" style="font-size:18px;">
+          Aún no hay un link configurado para tu caldera.
+        </div>
+        <div class="stat-change">
+          <i class="fa-solid fa-circle-info"></i>
+          Pide a un administrador que configure <code>profile.link</code>.
+        </div>
+      </div>
+    {% endif %}
+  </div>
+</section>
+<br>
+
+      <!-- Estadísticas -->
+      <section class="stats-section slide-up">
+        <div class="stats-grid">
+      
+          {# Promedio Agua del año actual #}
+          <div class="stat-card success">
+            <div class="stat-header">
+              <div class="stat-icon"><i class="fa-solid fa-tint"></i></div>
+            </div>
+            <div class="stat-value">
+              {% if avg_current.water_avg %}{{ avg_current.water_avg|floatformat:2 }} m³{% else %}—{% endif %}
+            </div>
+            <div class="stat-label">Agua · Promedio {{ year_now|default:"—" }}</div>
+            <div class="stat-change positive">
+              <i class="fa-solid fa-circle-info"></i> Promedio de registros del año
+            </div>
+          </div>
+      
+          {# Promedio Gas del año actual #}
+          <div class="stat-card warning">
+            <div class="stat-header">
+              <div class="stat-icon"><i class="fa-solid fa-fire-flame-simple"></i></div>
+            </div>
+            <div class="stat-value">
+              {% if avg_current.gas_avg %}{{ avg_current.gas_avg|floatformat:2 }} m³{% else %}—{% endif %}
+            </div>
+            <div class="stat-label">Gas · Promedio {{ year_now|default:"—" }}</div>
+            <div class="stat-change positive">
+              <i class="fa-solid fa-circle-info"></i> Promedio de registros del año
+            </div>
+          </div>
+      
+          {# Costo acumulado del año #}
+          <div class="stat-card">
+            <div class="stat-header">
+              <div class="stat-icon"><i class="fa-solid fa-sack-dollar"></i></div>
+            </div>
+            <div class="stat-value">
+              {% if totals.total_cost %}${{ totals.total_cost|floatformat:0 }}{% else %}—{% endif %}
+            </div>
+            <div class="stat-label">Costo acumulado {{ year_now|default:"—" }}</div>
+            <div class="stat-change positive">
+              <i class="fa-solid fa-circle-info"></i> Agua + Gas
+            </div>
+          </div>
+      
+          {# Cuenta regresiva de mantención #}
+          <div class="stat-card danger">
+            <div class="stat-header">
+              <div class="stat-icon"><i class="fa-solid fa-screwdriver-wrench"></i></div>
+            </div>
+            <div class="stat-value">
+              {% with d=request.user.profile.days_to_next_maintenance %}
+              {% if d is not None %}
+                {% if d >= 0 %}
+                  {{ d }} días
+                {% else %}
+                  VENCIDA {{ d|stringformat:"s"|cut:"-" }}d
+                {% endif %}
+              {% else %}
+                —
+              {% endif %}
+            {% endwith %}
+            
+            </div>
+            <div class="stat-label">Próxima mantención</div>
+            <div class="stat-change {% if request.user.profile.next_maintenance and request.user.profile.days_to_next_maintenance <= 14 %}negative{% else %}positive{% endif %}">
+              <i class="fa-solid {% if request.user.profile.next_maintenance and request.user.profile.days_to_next_maintenance <= 14 %}fa-triangle-exclamation{% else %}fa-check{% endif %}"></i>
+              {% if request.user.profile.next_maintenance %}
+                {{ request.user.profile.next_maintenance|date:"d/m/Y" }}
+              {% else %}
+                Sin fecha programada
+              {% endif %}
+            </div>
+          </div>
+      
+        </div>
+      </section>
+      
+
+      <!-- Layout principal (tabla + gráficos) -->
+      <div class="main-layout slide-up">
+        <!-- Panel principal -->
+        <main class="main-panel">
+         
+          <!-- Gráficos de Consumo -->
+          <div class="section-header" style="margin-top: 24px;">
+            <h2 class="section-title">
+              <i class="fa-solid fa-chart-line"></i>
+              Análisis de Consumo
+            </h2>
+          </div>
+
+          <div class="section-content" style="padding-top: 0;">
+            <!-- Filtro de comparación por años -->
+            <div class="chart-filter">
+              <div class="yf">
+                <label for="yearA">Comparar</label>
+                <select id="yearA"></select>
+              </div>
+              <span class="vs">vs</span>
+              <div class="yf">
+                <label for="yearB">Contra</label>
+                <select id="yearB"></select>
+              </div>
+              <button type="button" class="btn btn-ghost" id="swapYears" title="Intercambiar">
+                <i class="fa-solid fa-right-left"></i>
+              </button>
+            </div>
+
+            <div class="chart-grid">
+              <div class="chart-card">
+                <h4><i class="fa-solid fa-tint"></i> Agua (m³)</h4>
+                <div class="chart-wrap"><canvas id="chartAgua"></canvas></div>
+              </div>
+              <div class="chart-card">
+                <h4><i class="fa-solid fa-fire-flame-simple"></i> Gas (m³)</h4>
+                <div class="chart-wrap"><canvas id="chartGas"></canvas></div>
+              </div>
+            </div>
+          </div>
+        </main>
+
+        <!-- Sidebar -->
+        <aside class="sidebar">
+          <!-- Widget de perfil -->
+          <div class="widget">
+            <div class="widget-header">
+              <h3 class="widget-title">
+                <i class="fa-solid fa-user"></i>
+                Mi Espacio
+              </h3>
+            </div>
+            <div class="widget-content">
+              <div class="subwidget">
+                <h4 class="subwidget-title">
+                  <i class="fa-solid fa-id-card"></i> Mi Perfil
+                </h4>
+                <table class="data-table compact">
+                  <tbody>
+                    <tr>
+                      <th style="width:120px;">Usuario</th>
+                      <td>{{ request.user.username }}</td>
+                    </tr>
+                    <tr>
+                      <th>Email</th>
+                      <td>{{ request.user.email|default:"—" }}</td>
+                    </tr>
+                    <tr>
+                      <th>Ubicación</th>
+                      <td>{{ request.user.profile.location|default:"—" }}</td>
+                    </tr>
+                    <tr>
+                      <th>ID externo</th>
+                      <td>{{ request.user.profile.external_id|default:"—" }}</td>
+                    </tr>
+                    <tr>
+                      <th>Encargado</th>
+                      <td>{{ request.user.profile.manager_name|default:"—" }}</td>
+                    </tr>
+                    <tr>
+                      <th>Teléfono</th>
+                      <td>{{ request.user.profile.phone|default:"—" }}</td>
+                    </tr>
+                    <tr>
+                      <th>Dirección</th>
+                      <td>{{ request.user.profile.address|default:"—" }}</td>
+                    </tr>
+                    <tr>
+                      <th>Estado</th>
+                      <td>
+                        <span class="status-badge {% if request.user.is_active %}active{% else %}inactive{% endif %}">
+                          {% if request.user.is_active %}ACTIVO{% else %}INACTIVO{% endif %}
+                        </span>
+                      </td>
+                    </tr>
+                    <tr>
+                      <th>Último acceso</th>
+                      <td>
+                        {% if request.user.last_login %}
+                          {{ request.user.last_login|date:"d/m/Y H:i" }}
+                        {% else %}
+                          —
+                        {% endif %}
+                      </td>
+                    </tr>
+                    <tr>
+                      <th>Miembro desde</th>
+                      <td>{{ request.user.date_joined|date:"d/m/Y H:i" }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Botón de caldera -->
+              <div style="margin-top:20px; text-align:center;">
+                {% if request.user.profile.link %}
+                  <a href="{{ request.user.profile.link }}" target="_blank" rel="noopener"
+                    class="btn btn-primary" style="width:100%; justify-content:center;">
+                    <i class="fa-solid fa-fire"></i> Ver mi caldera
+                  </a>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+
+<!-- === Reportes automáticos === -->
+<div class="widget">
+  <div class="widget-header">
+    <h3 class="widget-title">
+      <i class="fa-solid fa-file-lines"></i>
+      Reportes automáticos
+    </h3>
+  </div>
+
+  <div class="widget-content">
+    <div class="preferences-list compact">
+      <div class="preference-item">
+        <span class="preference-label">
+          <i class="fa-solid fa-clock-rotate-left"></i> Frecuencia
+        </span>
+        <select id="rep-frequency" class="input" style="width:140px">
+          <option value="off" {% if request.user.profile.report_frequency == 'off' %}selected{% endif %}>Nunca</option>
+          <option value="m"   {% if request.user.profile.report_frequency == 'm' %}selected{% endif %}>Mensual</option>
+          <option value="q"   {% if request.user.profile.report_frequency == 'q' %}selected{% endif %}>Trimestral</option>
+        </select>
+      </div>
+
+      <div class="preference-item">
+        <span class="preference-label">
+          <i class="fa-solid fa-file-export"></i> Formato
+        </span>
+        <select id="rep-format" class="input" style="width:120px">
+          <option value="pdf" {% if request.user.profile.report_format == 'pdf' %}selected{% endif %}>PDF</option>
+          <option value="csv" {% if request.user.profile.report_format == 'csv' %}selected{% endif %}>CSV</option>
+        </select>
+      </div>
+
+      <div class="preference-item">
+        <span class="preference-label">
+          <i class="fa-solid fa-envelope"></i> Enviar a
+        </span>
+        <input id="rep-email" type="email" class="input" style="width:240px"
+               value="{{ request.user.profile.report_email|default:request.user.email }}">
+      </div>
+
+      <div class="report-actions">
+        {% now "Y" as this_year %}
+        <a class="btn btn-ghost"
+           href="{% url 'download_report' %}?year={{ year_now|default:this_year }}&format={{ request.user.profile.report_format|default:'pdf' }}">
+          <i class="fa-solid fa-download"></i> Descargar
+        </a>
+        <button type="button" class="btn btn-primary" id="btn-send-report">
+          <i class="fa-solid fa-paper-plane"></i> Enviar ahora
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+          <!-- Widget de estado de cuenta -->
+          <div class="widget">
+            <div class="widget-header">
+              <h3 class="widget-title">
+                <i class="fa-solid fa-info-circle"></i>
+                Estado de la cuenta
+              </h3>
+            </div>
+            <div class="widget-content">
+              <div style="display:flex;flex-direction:column;gap:16px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                  <span>Estado</span>
+                  <span class="status-badge {% if request.user.is_active %}active{% else %}inactive{% endif %}">
+                    {% if request.user.is_active %}Activo{% else %}Inactivo{% endif %}
+                  </span>
+                </div>
+
+                <!-- Mantenciones -->
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                  <span>Última mantención</span>
+                  <strong>{% if request.user.profile.last_maintenance %}{{ request.user.profile.last_maintenance|date:"d/m/Y" }}{% else %}—{% endif %}</strong>
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                  <span>Próxima mantención</span>
+                  <strong>{% if request.user.profile.next_maintenance %}{{ request.user.profile.next_maintenance|date:"d/m/Y" }}{% else %}—{% endif %}</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+        </aside>
+      </div><!-- /main-layout -->
+
+       
+        
+      
+      <!-- ============================================================================ -->
+<!-- ================== Buscar Consumo (por año/mes) ================== -->
+<!-- ================== Buscar Consumo (por año/mes) ================== -->
+<section class="main-panel" style="margin-top:24px;">
+  <div class="section-header">
+    <h2 class="section-title"><i class="fa-solid fa-magnifying-glass"></i> Buscar Consumo</h2>
+  </div>
+
+  <div class="section-content">
+    <form method="get" class="grid-form" id="consumoSearch">
+      <div class="form-group">
+        <label class="lbl">Año</label>
+        <select name="year" class="input">
+          {% for y in years_available %}
+            <option value="{{ y }}" {% if y == selected_year %}selected{% endif %}>{{ y }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="lbl">Mes</label>
+        <select name="month" class="input">
+          <option value="">— Elegir —</option>
+          {% for m in months_available %}
+            <option value="{{ m }}" {% if m == selected_month %}selected{% endif %}>{{ m }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <button class="btn btn-primary" type="submit">
+          <i class="fa-solid fa-search"></i> Buscar
+        </button>
+      </div>
+    </form>
+
+    {% if selected_month %}
+      {% if current_entry %}
+        <!-- Tarjeta de resultado -->
+        <div class="stat-card" style="margin-top:12px;">
+          <div class="stat-header">
+            <div class="stat-icon"><i class="fa-solid fa-droplet"></i></div>
+            <div>
+              <div class="stat-label">Resultado</div>
+              <div class="stat-value" style="font-size:var(--fs-28)">
+                {{ selected_month }} {{ selected_year }}
+              </div>
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;">
+            <!-- Agua -->
+            <div class="widget" style="padding:12px;">
+              <div class="widget-content">
+                <strong>M³ Agua</strong><br>
+                <span style="font-size:22px;font-weight:900">{{ current_entry.m3_water|default:"—" }}</span>
+              </div>
+            </div>
+
+            <!-- Gas -->
+            <div class="widget" style="padding:12px;">
+              <div class="widget-content">
+                <strong>M³ Gas</strong><br>
+                <span style="font-size:22px;font-weight:900">{{ current_entry.m3_gas|default:"—" }}</span>
+              </div>
+            </div>
+
+            <!-- Costo + Comparación -->
+            <div class="widget" style="padding:12px;">
+              <div class="widget-content">
+
+
+                {% if yoy %}
+                  {% if yoy.water_diff is not None or yoy.gas_diff is not None %}
+                    <div style="margin-top:10px;">
+                      <div style="font-weight:600;opacity:.8;margin-bottom:6px;">Comparación</div>
+                      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                        {% if yoy.water_diff is not None %}
+                          <span class="stat-change {% if yoy.water_diff >= 0 %}positive{% else %}negative{% endif %}">
+                            Agua vs {{ yoy.prev_year }}:
+                            {{ yoy.water_diff|floatformat:2 }} m³
+                            {% if yoy.water_pct is not None %}({{ yoy.water_pct|floatformat:1 }}%){% endif %}
+                          </span>
+                        {% endif %}
+                        {% if yoy.gas_diff is not None %}
+                          <span class="stat-change {% if yoy.gas_diff >= 0 %}positive{% else %}negative{% endif %}">
+                            Gas vs {{ yoy.prev_year }}:
+                            {{ yoy.gas_diff|floatformat:2 }} m³
+                            {% if yoy.gas_pct is not None %}({{ yoy.gas_pct|floatformat:1 }}%){% endif %}
+                          </span>
+                        {% endif %}
+                      </div>
+                    </div>
+                  {% endif %}
+                {% endif %}
+              </div>
+            </div>
+          </div><!-- /grid -->
+        </div><!-- /stat-card -->
+      {% else %}
+        <div class="totals-summary" style="margin-top:12px;">
+          No hay registro para <strong>{{ selected_month }} {{ selected_year }}</strong>.
+        </div>
+      {% endif %}
+    {% else %}
+      <div class="totals-summary" style="margin-top:12px;">
+        Selecciona un <strong>año</strong> y un <strong>mes</strong> para ver el consumo puntual.
+      </div>
+    {% endif %}
+
+    <!-- Chips de totales del año elegido -->
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;">
+      <span class="stat-change positive"><i class="fa-solid fa-tint"></i> Promedio agua {{ year_now }}: {{ avg_current.water_avg|default:"—"|floatformat:2 }} m³</span>
+      <span class="stat-change positive"><i class="fa-solid fa-fire"></i> Promedio gas {{ year_now }}: {{ avg_current.gas_avg|default:"—"|floatformat:2 }} m³</span>
+      <span class="stat-change"><i class="fa-solid fa-sack-dollar"></i> Costo acumulado: {% if totals.total_cost %}${{ totals.total_cost|floatformat:0 }}{% else %}—{% endif %}</span>
+    </div>
+  </div><!-- /section-content -->
+</section>
+
+
+
+    </div><!-- /container -->
+  </div><!-- /dashboard -->
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  {% load l10n %}
+  <script>
+    // CSRF helper
+    const CSRF = "{{ csrf_token }}";
+  
+    // Guardar preferencias cuando cambien
+    const $freq  = document.getElementById('rep-frequency');
+    const $fmt   = document.getElementById('rep-format');
+    const $email = document.getElementById('rep-email');
+  
+    async function savePrefs() {
+      await fetch("{% url 'save_prefs' %}", {
+        method: "POST",
+        headers: {"Content-Type": "application/json", "X-CSRFToken": CSRF},
+        body: JSON.stringify({
+          report_frequency: $freq.value,
+          report_format: $fmt.value,
+          report_email: $email.value
+        })
+      });
+    }
+    $freq.addEventListener('change', savePrefs);
+    $fmt.addEventListener('change', savePrefs);
+    $email.addEventListener('blur',  savePrefs);
+  
+    // Enviar por email ahora
+    document.getElementById('btn-send-report')?.addEventListener('click', async () => {
+      const year = {{ year_now|default:0 }} || new Date().getFullYear();
+      const res = await fetch("{% url 'email_report' %}", {
+        method: "POST",
+        headers: {"Content-Type": "application/json", "X-CSRFToken": CSRF},
+        body: JSON.stringify({
+          year: year,
+          format: $fmt.value,
+          to: $email.value
+        })
+      });
+      const data = await res.json();
+      if (data.ok) alert("Reporte enviado ✅");
+      else alert("No se pudo enviar: " + (data.error || "error"));
+    });
+  </script>
+  
+    
+  <script>
+    (() => {
+      // ====== Datos desde Django ======
+      const consumo = [
+        {% if rows %}
+          {% for r in rows %}
+            {
+              year: {{ r.year }},
+              month_label: "{{ r.month_label|escapejs }}",
+              water: {% if r.m3_water is not None %}{{ r.m3_water|unlocalize }}{% else %}null{% endif %},
+              gas:   {% if r.m3_gas   is not None %}{{ r.m3_gas|unlocalize   }}{% else %}null{% endif %}
+            }{% if not forloop.last %},{% endif %}
+          {% endfor %}
+        {% endif %}
+      ];
+      if (!consumo.length) return;
+
+      // Años
+      const years = Array.from(new Set(consumo.map(d => d.year))).sort((a,b)=>b-a);
+      const selA = document.getElementById('yearA');
+      const selB = document.getElementById('yearB');
+      const swapBtn = document.getElementById('swapYears');
+
+      const addOptions = (sel) => {
+        years.forEach(y => {
+          const o = document.createElement('option');
+          o.value = y; o.textContent = y; sel.appendChild(o);
+        });
+      };
+      addOptions(selA); addOptions(selB);
+      if (years.length) selA.value = years[0];
+      selB.value = years.length > 1 ? years[1] : years[0];
+
+      const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+      const monthIndex = Object.fromEntries(MONTHS.map((m,i)=>[m,i]));
+
+      function buildSeries(year){
+        const agua = new Array(12).fill(null);
+        const gas  = new Array(12).fill(null);
+        consumo.filter(d => d.year === Number(year)).forEach(d => {
+          const idx = monthIndex[d.month_label];
+          if (idx != null){
+            agua[idx] = d.water == null ? null : Number(String(d.water).replace(',','.'));
+            gas[idx]  = d.gas   == null ? null : Number(String(d.gas).replace(',','.'));
+          }
+        });
+        return { agua, gas };
+      }
+
+      const css = getComputedStyle(document.documentElement);
+      const cPrimary      = (css.getPropertyValue('--primary')||'#2563eb').trim();
+      const cPrimaryLight = (css.getPropertyValue('--primary-light')||'#93c5fd').trim();
+      const cSuccess      = (css.getPropertyValue('--success')||'#059669').trim();
+      const cSuccessAlt   = '#10b981';
+
+      const baseOpts = {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { position: 'top', labels: { usePointStyle: true } },
+          tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y ?? 0} m³` } }
+        },
+        scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+      };
+
+      const chartAgua = new Chart(document.getElementById('chartAgua'), {
+        type: 'line',
+        data: { labels: MONTHS, datasets: [] },
+        options: baseOpts
+      });
+
+      const chartGas = new Chart(document.getElementById('chartGas'), {
+        type: 'bar',
+        data: { labels: MONTHS, datasets: [] },
+        options: baseOpts
+      });
+
+      function updateCharts(){
+        const ya = Number(selA.value);
+        const yb = Number(selB.value);
+
+        const A = buildSeries(ya);
+        const B = buildSeries(yb);
+
+        chartAgua.data.datasets = [
+          {
+            label: `Agua ${ya}`,
+            data: A.agua,
+            borderColor: cPrimary, backgroundColor: cPrimary + '22',
+            borderWidth: 2, tension: .3, fill: true, pointRadius: 3, pointHoverRadius: 5
+          },
+          {
+            label: `Agua ${yb}`,
+            data: B.agua,
+            borderColor: cPrimaryLight, backgroundColor: cPrimaryLight + '22',
+            borderWidth: 2, tension: .3, fill: false, pointRadius: 3, pointHoverRadius: 5,
+            borderDash: [5,4]
+          }
+        ];
+        chartAgua.update();
+
+        chartGas.data.datasets = [
+          {
+            label: `Gas ${ya}`,
+            data: A.gas,
+            backgroundColor: cSuccess + '88', borderColor: cSuccess,
+            borderWidth: 1.5, borderRadius: 6, maxBarThickness: 36
+          },
+          {
+            label: `Gas ${yb}`,
+            data: B.gas,
+            backgroundColor: cSuccessAlt + '66', borderColor: cSuccessAlt,
+            borderWidth: 1.5, borderRadius: 6, maxBarThickness: 36
+          }
+        ];
+        chartGas.update();
+      }
+
+      selA.addEventListener('change', updateCharts);
+      selB.addEventListener('change', updateCharts);
+      swapBtn?.addEventListener('click', () => {
+        const tmp = selA.value; selA.value = selB.value; selB.value = tmp; updateCharts();
+      });
+
+      updateCharts();
+    })();
+  </script>
+
+  <script>
+    // Theme toggle
+    const themeToggle = document.getElementById('themeToggle');
+    const body = document.body;
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    if (savedTheme === 'dark') body.setAttribute('data-theme', 'dark');
+    if (themeToggle) {
+      themeToggle.addEventListener('click', () => {
+        const isDark = body.getAttribute('data-theme') === 'dark';
+        if (isDark) body.removeAttribute('data-theme'); else body.setAttribute('data-theme', 'dark');
+        localStorage.setItem('theme', isDark ? 'light' : 'dark');
+      });
+    }
+    // Animación progresiva
+    document.querySelectorAll('.slide-up').forEach((el, i) => el.style.animationDelay = `${i * 0.08}s`);
+    document.querySelectorAll('.form-control').forEach(input => input.classList.add('form-control'));
+  </script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Inicio | EMATEL{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>Inicio</h2>
+  {% if request.user.is_authenticated %}
+    <p>Hola <strong>{{ request.user.username }}</strong> (rol: {{ request.user.role }})</p>
+    <p>Ir a:
+      <a href="{% url 'admin_dashboard' %}">Panel Admin</a> |
+      <a href="{% url 'user_dashboard' %}">Panel Usuario</a>
+    </p>
+  {% else %}
+    <p><a href="{% url 'login' %}">Inicia sesión</a> para continuar.</p>
+  {% endif %}
+</div>
+{% endblock %}

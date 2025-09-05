@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Crear usuario | EMATEL{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:900px;margin:24px auto;">
+
+  {% if messages %}
+    {% for m in messages %}
+      <div class="alert alert-{{ m.tags }}">{{ m }}</div>
+    {% endfor %}
+  {% endif %}
+
+  {% if uform.errors or pform.errors %}
+    <div class="alert alert-danger" role="alert">
+      Revisa los campos, hay errores en el formulario.
+    </div>
+  {% endif %}
+
+  <h2 style="margin-top:0;">Crear nuevo usuario</h2>
+
+  <form method="post" novalidate>
+    {% csrf_token %}
+
+    <!-- Datos de cuenta -->
+    <h3 style="margin:16px 0 8px;">Cuenta</h3>
+    <div class="grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;">
+
+      <div class="form-row">
+        <label class="label" for="id_username">Usuario</label>
+        {{ uform.username }}
+        {% for e in uform.username.errors %}<div class="err">{{ e }}</div>{% endfor %}
+      </div>
+
+      <div class="form-row">
+        <label class="label" for="id_email">Email</label>
+        {{ uform.email }}
+        {% for e in uform.email.errors %}<div class="err">{{ e }}</div>{% endfor %}
+      </div>
+
+      <div class="form-row">
+        <label class="label" for="id_role">Rol</label>
+        {{ uform.role }}
+        {% for e in uform.role.errors %}<div class="err">{{ e }}</div>{% endfor %}
+      </div>
+
+      <div class="form-row">
+        <label class="label" for="id_password1">Contraseña</label>
+        {{ uform.password1 }}
+        {% for e in uform.password1.errors %}<div class="err">{{ e }}</div>{% endfor %}
+      </div>
+
+      <div class="form-row">
+        <label class="label" for="id_password2">Confirmar contraseña</label>
+        {{ uform.password2 }}
+        {% for e in uform.password2.errors %}<div class="err">{{ e }}</div>{% endfor %}
+      </div>
+
+    </div>
+
+    {% if uform.non_field_errors %}
+      <div class="err" style="margin-top:6px;">{{ uform.non_field_errors }}</div>
+    {% endif %}
+
+    <!-- Datos de perfil -->
+    <h3 style="margin:24px 0 8px;">Datos del Sitio / Cliente</h3>
+    <div class="grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;">
+
+      <div class="form-row">
+        <label class="label" for="id_location">Ubicación</label>
+        {{ pform.location }}
+        {% for e in pform.location.errors %}<div class="err">{{ e }}</div>{% endfor %}
+      </div>
+
+      <div class="form-row">
+        <label class="label" for="id_external_id">ID</label>
+        {{ pform.external_id }}
+        {% for e in pform.external_id.errors %}<div class="err">{{ e }}</div>{% endfor %}
+      </div>
+
+      <div class="form-row">
+        <label class="label" for="id_manager_name">Encargado</label>
+        {{ pform.manager_name }}
+        {% for e in pform.manager_name.errors %}<div class="err">{{ e }}</div>{% endfor %}
+      </div>
+
+      <div class="form-row">
+        <label class="label" for="id_phone">Teléfono</label>
+        {{ pform.phone }}
+        {% for e in pform.phone.errors %}<div class="err">{{ e }}</div>{% endfor %}
+      </div>
+
+      <div class="form-row" style="grid-column:span 2;">
+        <label class="label" for="id_address">Dirección</label>
+        {{ pform.address }}
+        {% for e in pform.address.errors %}<div class="err">{{ e }}</div>{% endfor %}
+      </div>
+
+      <div class="form-row" style="grid-column:span 2;">
+        <label class="label" for="id_link">Link</label>
+        {{ pform.link }}
+        {% for e in pform.link.errors %}<div class="err">{{ e }}</div>{% endfor %}
+      </div>
+
+      <!-- Mantenciones -->
+      <div class="form-row">
+        <label class="label" for="id_last_maintenance">Última mantención</label>
+        {{ pform.last_maintenance }}
+        {% for e in pform.last_maintenance.errors %}<div class="err">{{ e }}</div>{% endfor %}
+      </div>
+
+      <div class="form-row">
+        <label class="label" for="id_next_maintenance">Próxima mantención</label>
+        {{ pform.next_maintenance }}
+        {% for e in pform.next_maintenance.errors %}<div class="err">{{ e }}</div>{% endfor %}
+      </div>
+
+      <div class="form-row">
+        <label class="label" for="id_maintenance_interval_months">Intervalo (meses)</label>
+        {{ pform.maintenance_interval_months }}
+        {% for e in pform.maintenance_interval_months.errors %}<div class="err">{{ e }}</div>{% endfor %}
+      </div>
+
+    </div>
+
+    {% if pform.non_field_errors %}
+      <div class="err" style="margin-top:6px;">{{ pform.non_field_errors }}</div>
+    {% endif %}
+
+    <div class="form-actions" style="margin-top:16px;">
+      <button class="btn btn-primary" type="submit">Crear</button>
+      <a href="{% url 'admin_dashboard' %}" class="btn">Cancelar</a>
+    </div>
+  </form>
+</div>
+
+<script>
+  // Añade la clase 'input' a los widgets por si tu CSS la requiere
+  [
+    'id_username','id_email','id_role','id_password1','id_password2',
+    'id_location','id_external_id','id_manager_name','id_phone','id_address','id_link',
+    'id_last_maintenance','id_next_maintenance','id_maintenance_interval_months'
+  ].forEach(id => document.getElementById(id)?.classList.add('input'));
+</script>
+{% endblock %}
