@@ -14,3 +14,8 @@ PyMySQL>=1.1
 
 # Despliegue (opcional si vas a producción con Gunicorn):
 gunicorn>=21.2
+
+
+djangorestframework
+djangorestframework-simplejwt
+django-cors-headers

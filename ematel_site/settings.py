@@ -17,9 +17,12 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "rest_framework",
+    "corsheaders",
 ]
 
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -28,6 +31,30 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
+# --- CORS para Flutter/Web en desarrollo ---
+from corsheaders.defaults import default_headers
+
+# Limita CORS sólo a rutas /api (opcional pero recomendable)
+CORS_URLS_REGEX = r"^/api/.*$"
+
+if DEBUG:
+    # Opción simple para dev:
+    CORS_ALLOW_ALL_ORIGINS = True
+else:
+    # En prod, sé explícito
+    CORS_ALLOWED_ORIGIN_REGEXES = [
+        r"^http://localhost(:\d+)?$",
+        r"^http://127\.0\.0\.1(:\d+)?$",
+        # agrega tu dominio real si aplica:
+        # r"^https://tu-dominio\.cl$",
+    ]
+
+# (opcional) si alguna cabecera diera problemas:
+CORS_ALLOW_HEADERS = list(default_headers) + [
+    "authorization",
+    "content-type",
+]
+
 
 ROOT_URLCONF = "ematel_site.urls"
 
@@ -95,3 +122,21 @@ STATICFILES_DIRS = [
 ]
 
 STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")  # carpeta destino para collectstatic
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",   # web
+    "http://127.0.0.1:3000",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:8080",   # emuladores webviews
+    "http://127.0.0.1:8080",
+    # si pruebas en dispositivo real, usa tu IP local o un túnel (ngrok)
+]
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ),
+    "DEFAULT_PERMISSION_CLASSES": (
+        "rest_framework.permissions.IsAuthenticated",
+    ),
+}
