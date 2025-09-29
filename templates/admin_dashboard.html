@@ -1,4 +1,3 @@
-{% extends "base.html" %}
 {% load humanize %}
 {% load static %}
 
@@ -8,535 +7,360 @@
 {% endblock %}
 
 {% block content %}
-<div class="admin-dashboard">
-  
-  <!-- Header del Dashboard -->
-  <div class="dashboard-header">
-    <div class="header-content">
-      <div class="header-left">
-        <h1 class="dashboard-title">
-          <i class="fas fa-shield-alt"></i>
-          Panel de Administración
-        </h1>
-        <p class="dashboard-subtitle">Gestiona tu sistema desde aquí</p>
-      </div>
-      <div class="header-actions">
-        <div class="user-profile">
-          <div class="user-avatar">
-            <i class="fas fa-user-shield"></i>
-          </div>
-          <div class="user-info">
-            <span class="user-name">{{ request.user.username }}</span>
-            <span class="user-role">Administrador</span>
-          </div>
-        </div>
-        <a href="{% url 'logout' %}" class="btn btn-outline-danger">
-          <i class="fas fa-sign-out-alt"></i>
-          <span>Cerrar Sesión</span>
-        </a>
-      </div>
+<div class="admin neo">
+
+  <!-- TOPBAR -->
+  <header class="neo-topbar">
+    <div class="topbar-left">
+      <h1 class="brand">
+        <span class="brand-icon"><i class="fas fa-shield"></i></span>
+        <span>Panel de Administración</span>
+      </h1>
+      <p class="brand-sub">Monitorea y gestiona todo en un solo lugar</p>
     </div>
-  </div>
 
-  <div class="dashboard-layout">
-    <!-- Sidebar Mejorado -->
-    <aside class="sidebar">
-      <div class="sidebar-header">
-        <h3>
-          <i class="fas fa-tachometer-alt"></i>
-          Navegación
-        </h3>
-      </div>
-      
-      <nav class="sidebar-nav">
-        <a href="#gestion-usuarios" class="nav-item">
-          <i class="fas fa-users"></i>
-          <span>Usuarios</span>
-          <span class="badge">24</span>
-        </a>
-        <a href="#comparativas" class="nav-item">
-          <i class="fas fa-chart-line"></i>
-          <span>Reportes</span>
-        </a>
-        <a href="#agregar-consumo" class="nav-item">
-          <i class="fas fa-database"></i>
-          <span>Base de Datos</span>
-        </a>
-      </nav>
-      
-
-      <div class="sidebar-footer">
-        <div class="system-status">
-          <div class="status-indicator online"></div>
-          <span>Sistema Operativo</span>
+    <div class="topbar-right">
+      <div class="user-mini">
+        <div class="avatar"><i class="fas fa-user-shield"></i></div>
+        <div class="meta">
+          <strong>{{ request.user.username }}</strong>
+          <small>Administrador</small>
         </div>
+      </div>
+      <a class="btn-logout" href="{% url 'logout' %}">
+        <i class="fas fa-arrow-right-from-bracket"></i> Cerrar sesión
+      </a>
+    </div>
+  </header>
+
+  <div class="neo-layout">
+    <!-- SIDEBAR -->
+    <aside class="neo-sidebar">
+      <nav>
+        <a class="item active" href="#gestion-usuarios"><i class="fas fa-users"></i><span>Usuarios</span><span class="chip">{{ total_users }}</span></a>
+        <a class="item" href="#comparativas"><i class="fas fa-chart-line"></i><span>Reportes</span></a>
+        <a class="item" href="#agregar-consumo"><i class="fas fa-database"></i><span>Base de Datos</span></a>
+      </nav>
+      <div class="sidebar-foot">
+        <span class="dot on"></span> Sistema operativo
       </div>
     </aside>
 
-    <!-- Contenido Principal -->
-    <main class="main-content">
-        <!-- Panel de Gestión de Usuarios -->
-        <div id="gestion-usuarios" class="content-section">
-            <div class="section-header">
-              <h2>
-                <i class="fas fa-users-cog"></i>
-                Gestión de Usuarios
-              </h2>
-              <div class="section-actions">
-                <a href="{% url 'create_user' %}" class="btn btn-success">
-                  <i class="fas fa-plus"></i> Nuevo Usuario
-                </a>
-                
-                <button class="btn btn-secondary">
-                  <i class="fas fa-download"></i>
-                  Exportar
-                </button>
-              </div>
-            </div>
-    
-            <!-- Filtros y Búsqueda -->
-            <form method="get" class="table-controls" style="display:flex;gap:12px;align-items:center;">
-              <div class="search-box">
-                <i class="fas fa-search"></i>
-                <input type="text" name="q" value="{{ q }}" placeholder="Buscar usuarios..." class="search-input">
-              </div>
-              <div class="filter-controls" style="display:flex;gap:8px;">
-                <select class="filter-select" name="role">
-                  <option value="">Todos los roles</option>
-                  <option value="Administrador" {% if role_filter == "Administrador" %}selected{% endif %}>Administrador</option>
-                  <option value="Usuario" {% if role_filter == "Usuario" %}selected{% endif %}>Usuario</option>
-                </select>
-                <select class="filter-select" name="status">
-                  <option value="">Estado: Todos</option>
-                  <option value="activos" {% if status_filter == "activos" %}selected{% endif %}>Activos</option>
-                  <option value="inactivos" {% if status_filter == "inactivos" %}selected{% endif %}>Inactivos</option>
-                </select>
-                <button class="btn btn-secondary" type="submit">
-                  <i class="fas fa-filter"></i> Filtrar
-                </button>
-              </div>
-            </form>
+    <!-- MAIN -->
+    <main class="neo-main">
 
-    
-<!-- Tabla de Usuarios (dinámica) -->
-<div class="table-container">
-  <table class="data-table">
-    <thead>
-      <tr>
-        <th><input type="checkbox" class="select-all"></th>
-        <th>
-          <div class="th-content">
-            <span>ID</span><i class="fas fa-sort"></i>
-          </div>
-        </th>
-        <th>
-          <div class="th-content">
-            <span>Usuario</span><i class="fas fa-sort"></i>
-          </div>
-        </th>
-        <th>
-          <div class="th-content">
-            <span>Correo Electrónico</span><i class="fas fa-sort"></i>
-          </div>
-        </th>
-        <th>
-          <div class="th-content">
-            <span>Rol</span><i class="fas fa-sort"></i>
-          </div>
-        </th>
-        <th>
-          <div class="th-content">
-            <span>Estado</span><i class="fas fa-sort"></i>
-          </div>
-        </th>
-        <th>
-          <div class="th-content">
-            <span>Último Acceso</span><i class="fas fa-sort"></i>
-          </div>
-        </th>
-        <th>Acciones</th>
-      </tr>
-    </thead>
-
-    <tbody>
-      {% if page_obj.object_list %}
-        {% for u in page_obj %}
-          <tr>
-            <td><input type="checkbox" value="{{ u.id }}"></td>
-            <td><span class="user-id">#{{ u.id|stringformat:"03d" }}</span></td>
-
-            <td>
-              <div class="user-cell">
-                <div class="user-avatar-small">{{ u.username|first|upper }}</div>
-                <div class="user-details">
-                  <span class="user-name">{{ u.username }}</span>
-                  <span class="user-created">Creado: {{ u.date_joined|date:"d/m/Y" }}</span>
-                </div>
-              </div>
-            </td>
-
-            <td>{{ u.email|default:"—" }}</td>
-
-            <td>
-              <span class="role-badge {% if u.role == 'Administrador' %}admin{% else %}user{% endif %}">
-                {{ u.role|default:"Usuario" }}
-              </span>
-            </td>
-
-            <td>
-              {% if u.is_active %}
-                <span class="status-badge active">Activo</span>
-              {% else %}
-                <span class="status-badge inactive">Inactivo</span>
-              {% endif %}
-            </td>
-
-            <td>
-              <div class="last-access">
-                {% if u.last_login %}
-                  <span>{{ u.last_login|date:"d/m/Y H:i" }}</span>
-                  <small>Hace {{ u.last_login|timesince }}</small>
-                {% else %}
-                  <span>—</span>
-                  <small>Sin registro</small>
-                {% endif %}
-              </div>
-            </td>
-
-            <td>
-              <div class="action-buttons">
-                {# Descomenta cuando crees estas vistas y urls #}
-                {# <a href="{% url 'user_detail' u.id %}" class="action-btn view" title="Ver detalles"><i class="fas fa-eye"></i></a> #}
-                {# <a href="{% url 'user_edit' u.id %}" class="action-btn edit" title="Editar"><i class="fas fa-edit"></i></a> #}
-                <button class="action-btn delete" title="Eliminar"><i class="fas fa-trash"></i></button>
-              </div>
-            </td>
-          </tr>
-        {% endfor %}
-      {% else %}
-        <tr>
-          <td colspan="8" style="text-align:center;color:#64748b;padding:16px;">
-            No se encontraron usuarios con esos criterios.
-          </td>
-        </tr>
-      {% endif %}
-    </tbody>
-  </table>
-</div>
-
-<!-- Paginación simple -->
-<div class="pagination-container">
-  <div class="pagination-info">
-    Mostrando {{ page_obj.start_index }}-{{ page_obj.end_index }} de {{ page_obj.paginator.count }} usuarios
-  </div>
-
-  <div class="pagination">
-    <button class="page-btn {% if not page_obj.has_previous %}disabled{% endif %}"
-            {% if page_obj.has_previous %}onclick="location.href='?page={{ page_obj.previous_page_number }}'"{% endif %}>
-      <i class="fas fa-chevron-left"></i>
-    </button>
-
-    {% for num in page_obj.paginator.page_range %}
-      {% if num == page_obj.number %}
-        <button class="page-btn active">{{ num }}</button>
-      {% else %}
-        <button class="page-btn" onclick="location.href='?page={{ num }}'">{{ num }}</button>
-      {% endif %}
-    {% endfor %}
-
-    <button class="page-btn {% if not page_obj.has_next %}disabled{% endif %}"
-            {% if page_obj.has_next %}onclick="location.href='?page={{ page_obj.next_page_number }}'"{% endif %}>
-      <i class="fas fa-chevron-right"></i>
-    </button>
-  </div>
-</div>
-
-              </table>
-            </div>
-    
-            <div class="pagination-container">
-              <div class="pagination-info">
-                Mostrando {{ page_obj.start_index }}-{{ page_obj.end_index }} de {{ paginator.count }} usuarios
-              </div>
-            
-              <div class="pagination">
-                {% with qstr="q="|add:q|urlencode|add:"&role="|add:role_filter|urlencode|add:"&status="|add:status_filter|urlencode %}
-                  <button class="page-btn {% if not page_obj.has_previous %}disabled{% endif %}"
-                          {% if page_obj.has_previous %}onclick="location.href='?{{ qstr }}&page={{ page_obj.previous_page_number }}'"{% endif %}>
-                    <i class="fas fa-chevron-left"></i>
-                  </button>
-            
-                  {% for num in page_obj.paginator.page_range %}
-                    {% if num == page_obj.number %}
-                      <button class="page-btn active">{{ num }}</button>
-                    {% elif num <= 2 or num > page_obj.paginator.num_pages|add:"-2" or num >= page_obj.number|add:"-1" and num <= page_obj.number|add:"1" %}
-                      <button class="page-btn" onclick="location.href='?{{ qstr }}&page={{ num }}'">{{ num }}</button>
-                    {% elif forloop.first or forloop.last %}
-                      <span class="page-dots">...</span>
-                    {% endif %}
-                  {% endfor %}
-            
-                  <button class="page-btn {% if not page_obj.has_next %}disabled{% endif %}"
-                          {% if page_obj.has_next %}onclick="location.href='?{{ qstr }}&page={{ page_obj.next_page_number }}'"{% endif %}>
-                    <i class="fas fa-chevron-right"></i>
-                  </button>
-                {% endwith %}
-              </div>
-            </div>
-            
-    
-      <!-- Estadísticas Rápidas (enfocadas a calderas) -->
-      <div class="stats-overview">
-        <div class="stat-card">
-          <div class="stat-icon bg-orange">
-            <i class="fas fa-temperature-high"></i>
-          </div>
-          <div class="stat-details">
-            <h3>178°C</h3>
-            <p>Temp. Promedio (últ. hora)</p>
-            <span class="stat-trend positive">
-              <i class="fas fa-arrow-up"></i> +2.1%
-            </span>
+      <!-- KPIs -->
+      <section class="neo-cards">
+        <div class="card-kpi">
+          <div class="kpi-icon bg-blue"><i class="fas fa-user-check"></i></div>
+          <div class="kpi-body">
+            <h3>{{ total_activos }}</h3>
+            <p>Usuarios activos</p>
           </div>
         </div>
-        
-        <div class="stat-card">
-          <div class="stat-icon bg-purple">
-            <i class="fas fa-burn"></i>
-          </div>
-          <div class="stat-details">
-            <h3>92.5%</h3>
-            <p>Eficiencia térmica</p>
-            <span class="stat-trend neutral">
-              <i class="fas fa-minus"></i> Estable
-            </span>
+        <div class="card-kpi">
+          <div class="kpi-icon bg-slate"><i class="fas fa-user-slash"></i></div>
+          <div class="kpi-body">
+            <h3>{{ total_inactivos }}</h3>
+            <p>Usuarios inactivos</p>
           </div>
         </div>
-        
-        <div class="stat-card">
-          <div class="stat-icon bg-green">
-            <i class="fas fa-water"></i>
-          </div>
-          <div class="stat-details">
-            <h3>12.1 bar</h3>
-            <p>Presión media</p>
-            <span class="stat-trend negative">
-              <i class="fas fa-arrow-down"></i> -0.4%
-            </span>
+        <div class="card-kpi">
+          <div class="kpi-icon bg-emerald"><i class="fas fa-file-circle-plus"></i></div>
+          <div class="kpi-body">
+            <h3>{{ paginator.count }}</h3>
+            <p>Listado actual</p>
           </div>
         </div>
-        
-        <div class="stat-card">
-          <div class="stat-icon bg-blue">
-            <i class="fas fa-gauge"></i>
-          </div>
-          <div class="stat-details">
-            <h3>78%</h3>
-            <p>Carga del sistema</p>
-            <span class="stat-trend positive">
-              <i class="fas fa-arrow-up"></i> +4.8%
-            </span>
-          </div>
-        </div>
-      </div>
+      </section>
 
-      <!-- Estado por Caldera -->
-      <div class="content-section">
-        <div class="section-header">
-          <h2>
-            <i class="fas fa-fire"></i>
-            Estado de Calderas
-          </h2>
+      <!-- USUARIOS -->
+      <section id="gestion-usuarios" class="neo-section">
+        <div class="section-head">
+          <div>
+            <h2><i class="fas fa-users-gear"></i> Gestión de usuarios</h2>
+            <p class="muted">Crea, filtra y administra usuarios del sistema</p>
+          </div>
           <div class="section-actions">
-            <button class="btn btn-secondary">
-              <i class="fas fa-rotate"></i>
-              Actualizar
+            <a href="{% url 'create_user' %}" class="btn primary">
+              <i class="fas fa-plus"></i> Nuevo usuario
+            </a>
+            <button class="btn ghost">
+              <i class="fas fa-download"></i> Exportar
             </button>
           </div>
         </div>
 
-        <div class="boiler-grid">
-          <div class="boiler-card">
-            <div class="title"><i class="fas fa-fire"></i>Caldera #1</div>
-            <div class="boiler-meta">
-              <span>Últ. lectura: 14:30</span>
-              <span class="state-badge state-ok"><i class="fas fa-circle-check"></i> OK</span>
-            </div>
-            <div class="kpis">
-              <div class="kpi"><div class="label">Temperatura</div><div class="value">182°C</div></div>
-              <div class="kpi"><div class="label">Presión</div><div class="value">12.8 bar</div></div>
-              <div class="kpi"><div class="label">Eficiencia</div><div class="value">93%</div></div>
-            </div>
-            <div style="margin-top:.75rem;">
-              <div class="label" style="margin-bottom:.25rem;">Carga</div>
-              <div class="bar"><span style="width: 76%;"></span></div>
-            </div>
+        <!-- Filtros -->
+        <form method="get" class="filters">
+          <div class="search">
+            <i class="fas fa-magnifying-glass"></i>
+            <input type="text" name="q" value="{{ q }}" placeholder="Buscar por usuario o email…">
           </div>
 
-          <div class="boiler-card">
-            <div class="title"><i class="fas fa-fire"></i>Caldera #2</div>
-            <div class="boiler-meta">
-              <span>Últ. lectura: 14:30</span>
-              <span class="state-badge state-warn"><i class="fas fa-triangle-exclamation"></i> Atención</span>
+          <div class="chips">
+            <select name="role" class="chip-select">
+              <option value="">Rol: Todos</option>
+              <option value="Administrador" {% if role_filter == "Administrador" %}selected{% endif %}>Administrador</option>
+              <option value="Usuario" {% if role_filter == "Usuario" %}selected{% endif %}>Usuario</option>
+            </select>
+
+            <select name="status" class="chip-select">
+              <option value="">Estado: Todos</option>
+              <option value="activos" {% if status_filter == "activos" %}selected{% endif %}>Activos</option>
+              <option value="inactivos" {% if status_filter == "inactivos" %}selected{% endif %}>Inactivos</option>
+            </select>
+
+            <button class="btn" type="submit"><i class="fas fa-filter"></i> Filtrar</button>
+          </div>
+        </form>
+
+        <!-- Tabla -->
+        <div class="table-wrap">
+          <table class="neo-table">
+            <thead>
+              <tr>
+                <th class="w-24"><input type="checkbox" class="select-all"></th>
+                <th>ID</th>
+                <th>Usuario</th>
+                <th>Email</th>
+                <th>Rol</th>
+                <th>Estado</th>
+                <th>Último acceso</th>
+                <th class="w-80">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% if page_obj.object_list %}
+                {% for u in page_obj %}
+                  <tr>
+                    <td><input type="checkbox" value="{{ u.id }}"></td>
+                    <td><span class="mono chip-id">#{{ u.id|stringformat:"03d" }}</span></td>
+                    <td>
+                      <div class="user-stack">
+                        <div class="avatar-sm">{{ u.username|first|upper }}</div>
+                        <div>
+                          <div class="strong">{{ u.username }}</div>
+                          <small class="muted">Creado: {{ u.date_joined|date:"d/m/Y" }}</small>
+                        </div>
+                      </div>
+                    </td>
+                    <td>{{ u.email|default:"—" }}</td>
+                    <td>
+                      <span class="tag {% if u.role == 'Administrador' %}tag-red{% else %}tag-blue{% endif %}">
+                        {{ u.role|default:"Usuario" }}
+                      </span>
+                    </td>
+                    <td>
+                      {% if u.is_active %}
+                        <span class="badge success">Activo</span>
+                      {% else %}
+                        <span class="badge gray">Inactivo</span>
+                      {% endif %}
+                    </td>
+                    <td>
+                      {% if u.last_login %}
+                        <div class="stack">
+                          <span>{{ u.last_login|date:"d/m/Y H:i" }}</span>
+                          <small class="muted">Hace {{ u.last_login|timesince }}</small>
+                        </div>
+                      {% else %}
+                        <span>—</span><small class="muted block">Sin registro</small>
+                      {% endif %}
+                    </td>
+                    <td>
+                      <div class="row-actions">
+                        <a class="btn xs ghost view-user"
+                          title="Ver" href="#"
+                          data-id="{{ u.id }}"
+                          data-username="{{ u.username }}"
+                          data-email="{{ u.email|default:'—' }}"
+                          data-role="{{ u.role|default:'Usuario' }}"
+                          data-active="{% if u.is_active %}Sí{% else %}No{% endif %}"
+                          data-created="{{ u.date_joined|date:'d/m/Y H:i' }}"
+                          data-lastlogin="{% if u.last_login %}{{ u.last_login|date:'d/m/Y H:i' }}{% else %}—{% endif %}"
+
+                          {# ---- Sitio/Cliente (perfil) ---- #}
+                          data-sitio="{{ u.profile.site_name|default:'—' }}"
+                          data-ubicacion="{{ u.profile.location|default:'—' }}"
+                          data-clienteid="{{ u.profile.client_id|default:'—' }}"
+                          data-encargado="{{ u.profile.manager_name|default:'—' }}"
+                          data-telefono="{{ u.profile.phone|default:'+56 9 7948 2430' }}"
+                          data-direccion="{{ u.profile.address|default:'BELLAVISTA 165' }}"
+                          data-link="{{ u.profile.site_link|default:'https://…' }}"
+                          data-ult-mant="{% if u.profile.last_maintenance %}{{ u.profile.last_maintenance|date:'d/m/Y' }}{% else %}—{% endif %}"
+                          data-prox-mant="{% if u.profile.next_maintenance %}{{ u.profile.next_maintenance|date:'d/m/Y' }}{% else %}—{% endif %}"
+                          data-intervalo="{{ u.profile.maintenance_interval_months|default:'—' }}"
+                        >
+                          <i class="fas fa-eye"></i>
+                        </a>
+
+                        <a class="btn xs ghost edit-user"
+                          title="Editar" href="#"
+                          data-id="{{ u.id }}"
+                          data-username="{{ u.username }}"
+                          data-email="{{ u.email|default:'—' }}"
+                          data-role="{{ u.role|default:'Usuario' }}"
+                          data-active="{% if u.is_active %}1{% else %}0{% endif %}"
+                          data-telefono="{{ u.profile.phone|default:'' }}"
+                          data-direccion="{{ u.profile.address|default:'' }}"
+                          >
+                          <i class="fas fa-pen"></i>
+                        </a>
+
+                        <form action="{% url 'usuario_eliminar' pk=u.id %}" method="post" onsubmit="return confirm('¿Eliminar este usuario?');" style="display:inline">
+                          {% csrf_token %}
+                          <button class="btn xs danger" title="Eliminar"><i class="fas fa-trash"></i></button>
+                        </form>
+                      </div>
+                    </td>
+                  </tr>
+                {% endfor %}
+              {% else %}
+                <tr>
+                  <td colspan="8" class="empty">No se encontraron usuarios con esos criterios.</td>
+                </tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Paginación -->
+        <div class="pager">
+          <div class="info">
+            Mostrando {{ page_obj.start_index }}–{{ page_obj.end_index }} de {{ paginator.count }} usuarios
+          </div>
+          <div class="pages">
+            {% with qstr="q="|add:q|urlencode|add:"&role="|add:role_filter|urlencode|add:"&status="|add:status_filter|urlencode %}
+              <button class="btn icon {% if not page_obj.has_previous %}disabled{% endif %}"
+                {% if page_obj.has_previous %}onclick="location.href='?{{ qstr }}&page={{ page_obj.previous_page_number }}'"{% endif %}>
+                <i class="fas fa-chevron-left"></i>
+              </button>
+
+              {% for num in page_obj.paginator.page_range %}
+                {% if num == page_obj.number %}
+                  <button class="btn page active">{{ num }}</button>
+                {% elif num <= 2 or num > page_obj.paginator.num_pages|add:"-2" or num >= page_obj.number|add:"-1" and num <= page_obj.number|add:"1" %}
+                  <button class="btn page" onclick="location.href='?{{ qstr }}&page={{ num }}'">{{ num }}</button>
+                {% elif forloop.first or forloop.last %}
+                  <span class="dots">…</span>
+                {% endif %}
+              {% endfor %}
+
+              <button class="btn icon {% if not page_obj.has_next %}disabled{% endif %}"
+                {% if page_obj.has_next %}onclick="location.href='?{{ qstr }}&page={{ page_obj.next_page_number }}'"{% endif %}>
+                <i class="fas fa-chevron-right"></i>
+              </button>
+            {% endwith %}
+          </div>
+        </div>
+      </section>
+
+      <!-- REPORTES -->
+      <section id="comparativas" class="neo-section">
+        <div class="section-head">
+          <div>
+            <h2><i class="fas fa-arrows-left-right"></i> Comparativas ({{ chart_data.years.prev }} vs {{ chart_data.years.now }})</h2>
+            <p class="muted">Selecciona un usuario para filtrar los gráficos</p>
+          </div>
+          <div class="section-actions">
+            <select id="userFilter" class="chip-select">
+              <option value="">Todos los usuarios</option>
+              {% for u in users_for_filter %}
+                <option value="{{ u.id }}" {% if selected_user_id == u.id|stringformat:"s" %}selected{% endif %}>
+                  {{ u.username }} (ID {{ u.id }})
+                </option>
+              {% endfor %}
+            </select>
+            <span id="chartsLoader" class="muted" style="display:none">
+              <i class="fas fa-spinner fa-spin"></i> Cargando…
+            </span>
+          </div>
+        </div>
+
+        <div class="grid-1">
+          <div class="panel">
+            <div class="panel-head">
+              <div class="title"><i class="fas fa-water"></i> Consumo de Agua (m³/mes)</div>
             </div>
-            <div class="kpis">
-              <div class="kpi"><div class="label">Temperatura</div><div class="value">171°C</div></div>
-              <div class="kpi"><div class="label">Presión</div><div class="value">12.1 bar</div></div>
-              <div class="kpi"><div class="label">Eficiencia</div><div class="value">90%</div></div>
-            </div>
-            <div style="margin-top:.75rem;">
-              <div class="label" style="margin-bottom:.25rem;">Carga</div>
-              <div class="bar"><span style="width: 64%;"></span></div>
-            </div>
+            <div class="chart-host"><canvas id="chartAgua"></canvas></div>
           </div>
 
-          <div class="boiler-card">
-            <div class="title"><i class="fas fa-fire"></i>Caldera #3</div>
-            <div class="boiler-meta">
-              <span>Últ. lectura: 14:30</span>
-              <span class="state-badge state-down"><i class="fas fa-octagon-xmark"></i> Fuera de servicio</span>
+          <div class="panel">
+            <div class="panel-head">
+              <div class="title"><i class="fas fa-fire-flame-simple"></i> Consumo de Gas (m³/mes)</div>
             </div>
-            <div class="kpis">
-              <div class="kpi"><div class="label">Temperatura</div><div class="value">—</div></div>
-              <div class="kpi"><div class="label">Presión</div><div class="value">—</div></div>
-              <div class="kpi"><div class="label">Eficiencia</div><div class="value">—</div></div>
-            </div>
-            <div style="margin-top:.75rem;">
-              <div class="label" style="margin-bottom:.25rem;">Carga</div>
-              <div class="bar"><span style="width: 0%;"></span></div>
-            </div>
+            <div class="chart-host"><canvas id="chartGas"></canvas></div>
           </div>
         </div>
-      </div>
 
-      <!-- Comparativas -->
-      <div id="comparativas" class="content-section">
-        <!-- En la cabecera de Comparativas -->
-<div class="section-header">
-  <h2>
-    <i class="fas fa-arrows-left-right"></i>
-    Comparativas (Año {{ chart_data.years.prev }} vs {{ chart_data.years.now }})
-  </h2>
-  <div class="section-actions" style="display:flex;gap:.5rem;align-items:center;">
-    <label for="userFilter" class="sr-only">Usuario</label>
-    <select id="userFilter" class="filter-select">
-      <option value="">Todos los usuarios</option>
-      {% for u in users_for_filter %}
-        <option value="{{ u.id }}">{{ u.username }} (ID {{ u.id }})</option>
-      {% endfor %}
-    </select>
-    <span id="chartsLoader" style="display:none;font-size:.9rem;color:#64748b;">
-      <i class="fas fa-spinner fa-spin"></i> Cargando...
-    </span>
-  </div>
-</div>
+        {{ chart_data|json_script:"chart-data" }}
+      </section>
 
-        <div style="padding:1.25rem; display:grid; gap:1.25rem; grid-template-columns: 1fr;">
-
-            <div class="compare-card">
-                <div class="compare-head">
-                  <div class="title"><i class="fas fa-water"></i> Consumo de Agua (m³/mes)</div>
-                  <span class="trend eq"><i class="fas fa-equals"></i> Mensual</span>
-                </div>
-                <div class="chart-wrap">
-                  <canvas id="chartAgua"></canvas>
-                </div>
-              </div>
-              
-              <div class="compare-card">
-                <div class="compare-head">
-                  <div class="title"><i class="fas fa-fire-flame-simple"></i> Consumo de Gas (m³/mes)</div>
-                  <span class="trend eq"><i class="fas fa-equals"></i> Mensual</span>
-                </div>
-                <div class="chart-wrap">
-                  <canvas id="chartGas"></canvas>
-                </div>
-              </div>
-              
-
+      <!-- CONSUMO -->
+      <section id="agregar-consumo" class="neo-section">
+        <div class="section-head">
+          <div>
+            <h2><i class="fa-solid fa-plus"></i> Agregar Consumo (Admin)</h2>
+            {% if selected_user_id %}<p class="muted">Usuario seleccionado: ID {{ selected_user_id }}</p>{% endif %}
+          </div>
         </div>
-      </div>
 
-      {{ chart_data|json_script:"chart-data" }}
-
-    
-      <section id="agregar-consumo" class="main-panel" style="margin-top:24px;">
-        <div class="section-header">
-          <h2 class="section-title"><i class="fa-solid fa-plus"></i> Agregar Consumo (Admin)</h2>
-        </div>
-      
-        <div class="section-content">
+        <div class="panel">
           <form method="post" class="grid-form">
             {% csrf_token %}
-      
-            <div class="form-group">
+            <div class="fg">
               <label class="lbl">Usuario</label>
               {{ admin_form.user }}
               {% if admin_form.user.errors %}<div class="err">{{ admin_form.user.errors|striptags }}</div>{% endif %}
             </div>
-      
-            <div class="form-group">
+            <div class="fg">
               <label class="lbl">Año</label>
               {{ admin_form.year }}
               {% if admin_form.year.errors %}<div class="err">{{ admin_form.year.errors|striptags }}</div>{% endif %}
             </div>
-      
-            <div class="form-group">
+            <div class="fg">
               <label class="lbl">Mes</label>
               {{ admin_form.month_choice }}
               {% if admin_form.month_choice.errors %}<div class="err">{{ admin_form.month_choice.errors|striptags }}</div>{% endif %}
             </div>
-      
-            <div class="form-group">
+            <div class="fg">
               <label class="lbl">Día</label>
               {{ admin_form.day }}
               {% if admin_form.day.errors %}<div class="err">{{ admin_form.day.errors|striptags }}</div>{% endif %}
             </div>
-      
-            <div class="form-group">
+            <div class="fg">
               <label class="lbl">M³ Agua</label>
               {{ admin_form.m3_water }}
               {% if admin_form.m3_water.errors %}<div class="err">{{ admin_form.m3_water.errors|striptags }}</div>{% endif %}
             </div>
-      
-            <div class="form-group">
+            <div class="fg">
               <label class="lbl">M³ Gas</label>
               {{ admin_form.m3_gas }}
               {% if admin_form.m3_gas.errors %}<div class="err">{{ admin_form.m3_gas.errors|striptags }}</div>{% endif %}
             </div>
-      
             {% if admin_form.fields.cost %}
-              <div class="form-group">
-                <label class="lbl">Costo (CLP)</label>
-                {{ admin_form.cost }}
-                {% if admin_form.cost.errors %}<div class="err">{{ admin_form.cost.errors|striptags }}</div>{% endif %}
-              </div>
+            <div class="fg">
+              <label class="lbl">Costo (CLP)</label>
+              {{ admin_form.cost }}
+              {% if admin_form.cost.errors %}<div class="err">{{ admin_form.cost.errors|striptags }}</div>{% endif %}
+            </div>
             {% endif %}
-      
-            <div class="form-group" style="align-self:end">
-              <button type="submit" class="btn btn-primary">
-                <i class="fa-solid fa-floppy-disk"></i> Guardar
-              </button>
+            <div class="fg end">
+              <button type="submit" class="btn primary"><i class="fa-solid fa-floppy-disk"></i> Guardar</button>
             </div>
           </form>
         </div>
-      
-        <div class="section-header" style="margin-top:24px;">
-          <h2 class="section-title">
-            <i class="fa-solid fa-fire"></i>
-            Consumo de Gas y Agua
-            {% if selected_user_id %}<small style="font-weight:400;color:var(--text-muted);">· Usuario ID {{ selected_user_id }}</small>{% endif %}
-          </h2>
-        </div>
-      
-        <div class="section-content">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>Año</th><th>Mes</th><th>M³ Agua</th><th>M³ Gas</th><th>Costo (CLP)</th>
-              </tr>
-            </thead>
-            <tbody>
+
+        <div class="panel">
+          <div class="panel-head">
+            <div class="title"><i class="fa-solid fa-fire"></i> Consumo de Gas y Agua</div>
+          </div>
+
+          <div class="table-wrap">
+            <table class="neo-table compact">
+              <thead><tr><th>Año</th><th>Mes</th><th>M³ Agua</th><th>M³ Gas</th><th>Costo (CLP)</th></tr></thead>
+              <tbody>
               {% if rows %}
                 {% for r in rows %}
                   <tr>
@@ -548,19 +372,124 @@
                   </tr>
                 {% endfor %}
               {% else %}
-                <tr><td colspan="5" style="text-align:center;color:var(--text-muted);">
-                  {% if selected_user_id %}Sin registros para este usuario.{% else %}Selecciona un usuario o guarda consumo para verlo aquí.{% endif %}
-                </td></tr>
+                <tr><td colspan="5" class="empty">{% if selected_user_id %}Sin registros para este usuario.{% else %}Selecciona un usuario o guarda consumo para verlo aquí.{% endif %}</td></tr>
               {% endif %}
-            </tbody>
-          </table>
+              </tbody>
+            </table>
+          </div>
         </div>
       </section>
+      <div id="userModal" class="neo-modal" aria-hidden="true">
+        <div class="neo-modal__backdrop" data-close></div>
+        <div class="neo-modal__panel" role="dialog" aria-modal="true" aria-labelledby="userModalTitle">
+          <div class="neo-modal__head">
+            <h3 id="userModalTitle"><i class="fas fa-user"></i> Detalle</h3>
+            <button class="neo-modal__close" title="Cerrar" data-close><i class="fas fa-times"></i></button>
+          </div>
       
+          <div class="neo-modal__body" style="display:flex; flex-direction:column; gap:14px;">
+            <!-- Usuario -->
+            <div class="user-detail">
+              <div class="avatar-lg" id="ud-avatar">U</div>
+              <div class="stack">
+                <div class="ud-username strong" id="ud-username">—</div>
+                <div class="muted mono">ID <span id="ud-id">—</span> · <span id="ud-role-tag" class="tag tag-blue">—</span></div>
+              </div>
+            </div>
+      
+            <div class="ud-grid">
+              <div class="ud-field"><span class="lbl">Usuario</span><div id="ud-username-2">—</div></div>
+              <div class="ud-field"><span class="lbl">Email</span><div id="ud-email">—</div></div>
+              <div class="ud-field"><span class="lbl">Rol</span><div id="ud-role">—</div></div>
+              <div class="ud-field"><span class="lbl">Activo</span><div id="ud-active"><span class="badge gray">—</span></div></div>
+              <div class="ud-field"><span class="lbl">Creado</span><div id="ud-created">—</div></div>
+              <div class="ud-field"><span class="lbl">Último acceso</span><div id="ud-lastlogin">—</div></div>
+            </div>
+      
+            <!-- Datos del Sitio / Cliente -->
+            <h4 class="strong" style="margin-top:4px;">Datos del Sitio / Cliente</h4>
+            <div class="ud-grid">
+              <div class="ud-field"><span class="lbl">Ubicación</span><div id="ud-ubicacion">—</div></div>
+              <div class="ud-field"><span class="lbl">ID</span><div id="ud-clienteid">—</div></div>
+              <div class="ud-field"><span class="lbl">Encargado</span><div id="ud-encargado">—</div></div>
+              <div class="ud-field"><span class="lbl">Teléfono</span><div><a id="ud-telefono" href="#" target="_blank">—</a></div></div>
+              <div class="ud-field" style="grid-column: span 2;"><span class="lbl">Dirección</span><div id="ud-direccion">—</div></div>
+              <div class="ud-field" style="grid-column: span 2;"><span class="lbl">Link</span><div><a id="ud-link" href="#" target="_blank" rel="noopener">—</a></div></div>
+              <div class="ud-field"><span class="lbl">Última mantención</span><div id="ud-ult-mant">—</div></div>
+              <div class="ud-field"><span class="lbl">Próxima mantención</span><div id="ud-prox-mant">—</div></div>
+              <div class="ud-field"><span class="lbl">Intervalo (meses)</span><div id="ud-intervalo">—</div></div>
+            </div>
+          </div>
+      
+          <div class="neo-modal__foot">
+            <button class="btn primary" data-close><i class="fas fa-check"></i> Cerrar</button>
+          </div>
+        </div>
+      </div>
+      
+
+
+      <div id="editUserModal" class="neo-modal" aria-hidden="true">
+        <div class="neo-modal__backdrop" data-close></div>
+        <div class="neo-modal__panel" role="dialog" aria-modal="true">
+          <div class="neo-modal__head">
+            <h3><i class="fas fa-pen"></i> Editar Usuario</h3>
+            <button class="neo-modal__close" data-close><i class="fas fa-times"></i></button>
+          </div>
+      
+          <form id="editUserForm" method="post" class="neo-modal__body" style="display:flex;flex-direction:column;gap:14px;">
+            {% csrf_token %}
+            <input type="hidden" name="id" id="eu-id">
+      
+            <div class="field">
+              <label for="eu-username">Usuario</label>
+              <input type="text" id="eu-username" name="username" required>
+            </div>
+      
+            <div class="field">
+              <label for="eu-email">Email</label>
+              <input type="email" id="eu-email" name="email">
+            </div>
+      
+            <div class="field">
+              <label for="eu-role">Rol</label>
+              <select id="eu-role" name="role">
+                <option value="Usuario">Usuario</option>
+                <option value="Administrador">Administrador</option>
+              </select>
+            </div>
+      
+            <div class="field">
+              <label for="eu-active">Estado</label>
+              <select id="eu-active" name="is_active">
+                <option value="1">Activo</option>
+                <option value="0">Inactivo</option>
+              </select>
+            </div>
+      
+            <div class="field">
+              <label for="eu-telefono">Teléfono</label>
+              <input type="text" id="eu-telefono" name="telefono">
+            </div>
+      
+            <div class="field">
+              <label for="eu-direccion">Dirección</label>
+              <input type="text" id="eu-direccion" name="direccion">
+            </div>
+          </form>
+      
+          <div class="neo-modal__foot">
+            <button class="btn" data-close>Cancelar</button>
+            <button class="btn primary" type="submit" form="editUserForm">Guardar</button>
+          </div>
+        </div>
+      </div>
       
     </main>
   </div>
 </div>
+{% endblock %}
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
@@ -826,4 +755,176 @@
   style.textContent = fadeOutKeyframes;
   document.head.appendChild(style);
 </script>
-{% endblock %}
+<script>
+  (function(){
+    const links = Array.from(document.querySelectorAll('.neo-sidebar .item'));
+    if (!links.length) return;
+  
+    // Mapea sección -> link
+    const map = new Map();
+    links.forEach(a => {
+      const id = a.getAttribute('href') || '';
+      if (id.startsWith('#')) {
+        const section = document.querySelector(id);
+        if (section) map.set(section, a);
+      }
+    });
+  
+    function setActiveLinkByHash(hash){
+      links.forEach(a => a.classList.remove('active'));
+      const target = links.find(a => a.getAttribute('href') === hash);
+      if (target) target.classList.add('active');
+    }
+  
+    // 1) Al cargar por hash directo
+    setActiveLinkByHash(location.hash || '#gestion-usuarios');
+  
+    // 2) Al cambiar el hash (por click)
+    window.addEventListener('hashchange', () => setActiveLinkByHash(location.hash));
+  
+    // 3) Mientras scrolleas (marca la sección visible)
+    const observer = new IntersectionObserver((entries) => {
+      let best = null;
+      // Elige la entrada con mayor intersección
+      entries.forEach(e => {
+        if (e.isIntersecting && (!best || e.intersectionRatio > best.intersectionRatio)) best = e;
+      });
+      if (best && map.has(best.target)) {
+        links.forEach(a => a.classList.remove('active'));
+        map.get(best.target).classList.add('active');
+        history.replaceState(null, '', '#' + best.target.id); // sincroniza el hash
+      }
+    }, { rootMargin: '0px 0px -60% 0px', threshold: [0.25, 0.5, 0.75, 1] });
+  
+    map.forEach((_, section) => observer.observe(section));
+  })();
+  </script>
+  <script>
+    (function(){
+      const modal = document.getElementById('userModal');
+      if (!modal) return;
+      const openers = document.querySelectorAll('.view-user');
+      const closeEls = modal.querySelectorAll('[data-close]');
+      const $ = (sel) => modal.querySelector(sel);
+    
+      function isHttp(url){ return /^https?:\/\//i.test(url || ''); }
+    
+      function openModal(d){
+        // Avatar + cabecera
+        $('#ud-avatar').textContent = (d.username||'U').trim().charAt(0).toUpperCase();
+        $('#ud-username').textContent = d.username || '—';
+        $('#ud-id').textContent = d.id || '—';
+    
+        // Rol / tag
+        const tag = $('#ud-role-tag');
+        tag.textContent = d.role || '—';
+        tag.className = 'tag ' + (d.role === 'Administrador' ? 'tag-red' : 'tag-blue');
+    
+        // Bloque Usuario
+        $('#ud-username-2').textContent = d.username || '—';
+        $('#ud-email').textContent = d.email || '—';
+        $('#ud-role').textContent = d.role || '—';
+        $('#ud-active').innerHTML = (d.active === 'Sí') ? '<span class="badge success">Activo</span>' : '<span class="badge gray">Inactivo</span>';
+        $('#ud-created').textContent = d.created || '—';
+        $('#ud-lastlogin').textContent = d.lastlogin || '—';
+    
+        // Sitio / Cliente
+        $('#ud-ubicacion').textContent = d.ubicacion || '—';
+        $('#ud-clienteid').textContent = d.clienteid || '—';
+        $('#ud-encargado').textContent = d.encargado || '—';
+    
+        // Teléfono (tel:)
+        const tel = (d.telefono || '').trim();
+        const telA = $('#ud-telefono');
+        if (tel) { telA.textContent = tel; telA.href = 'tel:' + tel.replace(/\s+/g,''); } else { telA.textContent = '—'; telA.removeAttribute('href'); }
+    
+        // Dirección
+        $('#ud-direccion').textContent = d.direccion || '—';
+    
+        // Link (abre en nueva)
+        const linkA = $('#ud-link');
+        const url = d.link || '';
+        if (isHttp(url)) { linkA.textContent = url; linkA.href = url; }
+        else { linkA.textContent = url || '—'; linkA.removeAttribute('href'); }
+    
+        // Mantenciones
+        $('#ud-ult-mant').textContent = d.ultMant || '—';
+        $('#ud-prox-mant').textContent = d.proxMant || '—';
+        $('#ud-intervalo').textContent = d.intervalo || '—';
+    
+        // Mostrar
+        modal.classList.add('open');
+        setTimeout(()=> modal.querySelector('.neo-modal__close')?.focus(), 0);
+      }
+    
+      function closeModal(){ modal.classList.remove('open'); }
+    
+      openers.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          const x = btn.dataset;
+          openModal({
+            id:x.id, username:x.username, email:x.email, role:x.role, active:x.active,
+            created:x.created, lastlogin:x.lastlogin,
+            ubicacion:x.ubicacion, clienteid:x.clienteid, encargado:x.encargado,
+            telefono:x.telefono, direccion:x.direccion, link:x.link,
+            ultMant:x.ultMant, proxMant:x.proxMant, intervalo:x.intervalo
+          });
+        });
+      });
+    
+      closeEls.forEach(el => el.addEventListener('click', closeModal));
+      modal.addEventListener('click', (e) => { if (e.target.classList.contains('neo-modal__backdrop')) closeModal(); });
+      window.addEventListener('keydown', (e)=>{ if(e.key==='Escape' && modal.classList.contains('open')) closeModal(); });
+    })();
+    </script>
+    
+    <script>
+      (function(){
+        const modal = document.getElementById('editUserModal');
+        const form = document.getElementById('editUserForm');
+        if (!modal || !form) return;
+      
+        const openers = document.querySelectorAll('.edit-user');
+        const closeEls = modal.querySelectorAll('[data-close]');
+      
+        function openModal(d){
+          form.querySelector('#eu-id').value = d.id || '';
+          form.querySelector('#eu-username').value = d.username || '';
+          form.querySelector('#eu-email').value = d.email || '';
+          form.querySelector('#eu-role').value = d.role || 'Usuario';
+          form.querySelector('#eu-active').value = d.active || '1';
+          form.querySelector('#eu-telefono').value = d.telefono || '';
+          form.querySelector('#eu-direccion').value = d.direccion || '';
+          modal.classList.add('open');
+        }
+      
+        function closeModal(){ modal.classList.remove('open'); }
+      
+        openers.forEach(btn=>{
+          btn.addEventListener('click',(e)=>{
+            e.preventDefault();
+            openModal(btn.dataset);
+          });
+        });
+      
+        closeEls.forEach(el=>el.addEventListener('click', closeModal));
+        modal.addEventListener('click', (e)=>{ if(e.target.classList.contains('neo-modal__backdrop')) closeModal(); });
+        window.addEventListener('keydown', (e)=>{ if(e.key==='Escape') closeModal(); });
+      
+        // Envío del form
+        form.addEventListener('submit', async (e)=>{
+          e.preventDefault();
+          const fd = new FormData(form);
+          const resp = await fetch(`/usuarios/${fd.get('id')}/editar/`, {
+            method:'POST', body:fd, headers:{'X-CSRFToken': fd.get('csrfmiddlewaretoken')}
+          });
+          if(resp.ok){
+            location.reload(); // refresca tabla
+          }else{
+            alert("Error al guardar");
+          }
+        });
+      })();
+      </script>
+      

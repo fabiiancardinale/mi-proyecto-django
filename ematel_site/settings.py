@@ -3,14 +3,16 @@ import os
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = "django-insecure-xxx"   # mueve esto a variables de entorno en cuanto puedas
-DEBUG = True
-ALLOWED_HOSTS = ["localhost", "127.0.0.1","*","82.25.79.89"]  # agrega tu dominio/IP pública cuando despliegues
+SECRET_KEY = "django-insecure-xxx"
+DEBUG = False
+ALLOWED_HOSTS = ["localhost", "127.0.0.1", "82.25.79.89", "*"]
+
+CSRF_TRUSTED_ORIGINS = ["http://82.25.79.89", "https://82.25.79.89"]
 
 INSTALLED_APPS = [
     "monitoring.apps.MonitoringConfig",
-    "accounts",  # <-- nuestra app
-    "django.contrib.humanize",   # <--- AGREGA ESTA LÍNEA
+    "accounts",
+    "django.contrib.humanize",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -22,8 +24,9 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
-    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",   # <-- necesario con DEBUG=False
+    "corsheaders.middleware.CorsMiddleware",        # <-- antes de CommonMiddleware
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -31,51 +34,36 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
-# --- CORS para Flutter/Web en desarrollo ---
+
+# CORS
 from corsheaders.defaults import default_headers
-
-# Limita CORS sólo a rutas /api (opcional pero recomendable)
 CORS_URLS_REGEX = r"^/api/.*$"
-
 if DEBUG:
-    # Opción simple para dev:
     CORS_ALLOW_ALL_ORIGINS = True
 else:
-    # En prod, sé explícito
     CORS_ALLOWED_ORIGIN_REGEXES = [
         r"^http://localhost(:\d+)?$",
         r"^http://127\.0\.0\.1(:\d+)?$",
-        # agrega tu dominio real si aplica:
-        # r"^https://tu-dominio\.cl$",
     ]
-
-# (opcional) si alguna cabecera diera problemas:
-CORS_ALLOW_HEADERS = list(default_headers) + [
-    "authorization",
-    "content-type",
-]
-
+CORS_ALLOW_HEADERS = list(default_headers) + ["authorization", "content-type"]
 
 ROOT_URLCONF = "ematel_site.urls"
 
-TEMPLATES = [
-    {
-        "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [BASE_DIR / "templates"],  # <-- carpeta templates común
-        "APP_DIRS": True,
-        "OPTIONS": {
-            "context_processors": [
-                "django.template.context_processors.request",
-                "django.contrib.auth.context_processors.auth",
-                "django.contrib.messages.context_processors.messages",
-            ],
-        },
+TEMPLATES = [{
+    "BACKEND": "django.template.backends.django.DjangoTemplates",
+    "DIRS": [BASE_DIR / "templates"],
+    "APP_DIRS": True,
+    "OPTIONS": {
+        "context_processors": [
+            "django.template.context_processors.request",
+            "django.contrib.auth.context_processors.auth",
+            "django.contrib.messages.context_processors.messages",
+        ],
     },
-]
+}]
 
 WSGI_APPLICATION = "ematel_site.wsgi.application"
 
-# === Base de datos (tu config) ===
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.mysql",
@@ -91,47 +79,28 @@ DATABASES = {
     }
 }
 
-# Usuario personalizado (roles)
 AUTH_USER_MODEL = "accounts.User"
-
-# Login/Logout
 LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "home"
 LOGOUT_REDIRECT_URL = "login"
 
-# Internacionalización (Chile)
 LANGUAGE_CODE = "es-cl"
 TIME_ZONE = "America/Santiago"
 USE_I18N = True
 USE_TZ = True
 
-# Static
-STATIC_URL = "static/"
-STATICFILES_DIRS = [BASE_DIR / "static"]  # opcional, si tendrás /static con css/js
+# ESTÁTICOS (un solo bloque)
+STATIC_URL = "/static/"
+STATICFILES_DIRS = [BASE_DIR / "static"]          # tus fuentes (dev)
+STATIC_ROOT = BASE_DIR / "staticfiles"            # destino collectstatic
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
+
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# Si accedes por IP/dominio en producción, agrega también (ajusta host):
-# CSRF_TRUSTED_ORIGINS = ["https://tudominio.cl", "https://82.25.79.89"]
-BASE_DIR = Path(__file__).resolve().parent.parent
-
-# Archivos estáticos
-STATIC_URL = '/static/'
-
-STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, "static"),  # tus CSS/JS en desarrollo
-]
-
-STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")  # carpeta destino para collectstatic
-
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",   # web
-    "http://127.0.0.1:3000",
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://localhost:8080",   # emuladores webviews
-    "http://127.0.0.1:8080",
-    # si pruebas en dispositivo real, usa tu IP local o un túnel (ngrok)
-]
+# DRF + JWT
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",

@@ -719,3 +719,75 @@ def admin_add_consumption(request):
         obj.save()
 
     return JsonResponse({"ok": True})
+# views.py
+from django.contrib import messages
+from django.contrib.auth import get_user_model
+from django.contrib.auth.decorators import login_required, permission_required
+from django.db.models.deletion import ProtectedError
+from django.http import HttpResponseNotAllowed
+from django.shortcuts import get_object_or_404, redirect
+
+User = get_user_model()
+@login_required
+@permission_required("accounts.delete_user", raise_exception=True)  # <-- no "auth.delete_user"
+def eliminar_usuario(request, pk):
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+
+    user = get_object_or_404(User, pk=pk)
+
+    # Evita auto-eliminarte (opcional)
+    if user == request.user:
+        messages.error(request, "No puedes eliminar tu propia cuenta.")
+        return redirect("admin_dashboard")
+
+
+
+    try:
+        user.delete()  # si hay FKs PROTECT, lanzará ProtectedError
+        messages.success(request, "Usuario eliminado correctamente.")
+    except ProtectedError as e:
+        # Puedes contar objetos protegidos
+        messages.error(
+            request,
+            "No se puede eliminar: tiene registros asociados. (Protegido por integridad referencial)"
+        )
+    return redirect("admin_dashboard")
+from django.contrib.auth import get_user_model
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render
+
+User = get_user_model()
+
+@login_required
+def lista_usuarios(request):
+    usuarios = User.objects.all().order_by("id")
+    return render(request, "accounts/usuarios_lista.html", {"usuarios": usuarios})
+
+
+from django.views.decorators.http import require_POST
+from django.shortcuts import get_object_or_404
+from django.http import JsonResponse
+
+@admin_required
+@require_POST
+def editar_usuario(request, pk):
+    user = get_object_or_404(User, pk=pk)
+    user.username = request.POST.get("username", user.username)
+    user.email = request.POST.get("email", user.email)
+    user.role = request.POST.get("role", user.role)
+    user.is_active = bool(int(request.POST.get("is_active", "1")))
+    user.save()
+
+    # extra: actualizar perfil
+    profile = getattr(user, "profile", None)
+    if profile:
+        profile.phone = request.POST.get("telefono", profile.phone)
+        profile.address = request.POST.get("direccion", profile.address)
+        profile.save()
+
+    return JsonResponse({"ok": True})
+from django.shortcuts import render
+
+def custom_404(request, exception):
+    return render(request, "404.html", status=404)

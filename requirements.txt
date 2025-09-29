@@ -1,21 +1,13 @@
-# Core web framework
-Django==5.2.3
+Django>=5.0,<6.0
+djangorestframework>=3.15.0
+djangorestframework-simplejwt>=5.3.1
+django-cors-headers>=4.3.1
+whitenoise>=6.6.0
 
-# MySQL driver (ENGINE = django.db.backends.mysql)
-# Requiere libmysqlclient y headers del sistema.
-mysqlclient>=2.2,<3
+# Cliente MySQL (elige uno de estos según lo que uses)
+mysqlclient>=2.2.0
+# o alternativamente:
+# PyMySQL>=1.1.0
 
-# Generación de PDF para los reportes
-reportlab>=4.0
-
-# --- Opcionales ---
-# Si no puedes compilar mysqlclient, puedes usar PyMySQL en su lugar:
-PyMySQL>=1.1
-
-# Despliegue (opcional si vas a producción con Gunicorn):
-gunicorn>=21.2
-
-
-djangorestframework
-djangorestframework-simplejwt
-django-cors-headers
+# Utilidades
+python-dotenv>=1.0.1
