@@ -17,6 +17,17 @@ from monitoring.models import Consumption
 # =============================
 # Helpers de rol y auth
 # =============================
+
+from accounts.models import GasConsumption
+
+def _abbr(m):
+    return (m or "").strip().lower().split("-")[0][:3]
+
+for obj in GasConsumption.objects.all():
+    obj.month = _abbr(obj.month)  # normaliza todo a 'ene'..'dic'
+    obj.save(update_fields=["month"])
+
+
 def redirect_by_role(user):
     if getattr(user, "is_superuser", False):
         return "admin_dashboard"
@@ -202,15 +213,37 @@ def admin_dashboard(request: HttpRequest) -> HttpResponse:
 
     if request.method == "POST":
         if admin_form.is_valid():
-            obj = admin_form.save()  # usa el usuario elegido en el propio form
-            messages.success(
-                request,
-                f"Consumo guardado para {obj.user.username} ({obj.year}-{obj.month})."
+            cd = admin_form.cleaned_data
+            month_val = cd.get("month_choice") or cd.get("month") or ""
+            month_key = str(month_val).strip().lower()[:3]  # 'ene'..'dic'
+
+            # Buscar existente por prefijo (ene, enero, ene-15, etc.)
+            qs = GasConsumption.objects.filter(
+                user=cd["user"],
+                year=cd["year"],
+                month__istartswith=month_key,
             )
-            # Redirige manteniendo el usuario seleccionado para ver su tabla y refrescar gráficos
+            obj = qs.first()
+            if obj:
+                obj.month = month_key             # normaliza lo viejo
+                obj.m3_water = cd.get("m3_water") or 0
+                obj.m3_gas   = cd.get("m3_gas") or 0
+                obj.cost     = cd.get("cost") or 0
+                obj.save()
+            else:
+                obj = GasConsumption.objects.create(
+                    user=cd["user"], year=cd["year"], month=month_key,
+                    m3_water=cd.get("m3_water") or 0,
+                    m3_gas=cd.get("m3_gas") or 0,
+                    cost=cd.get("cost") or 0,
+                )
+
+            messages.success(request, f"Consumo guardado para {obj.user.username} ({obj.year}-{obj.month}).")
             return redirect(f"{request.path}?selected_user={obj.user_id}")
         else:
             messages.error(request, "Revisa los datos del formulario.")
+
+
 
     # ==== Usuario seleccionado para tabla/gráfico ====
     selected_user_id = request.GET.get("selected_user")
@@ -350,13 +383,36 @@ def user_dashboard(request):
     if request.method == "POST":
         form = GasConsumptionForm(request.POST)
         if form.is_valid():
-            form.save(user=user)  # <-- pasa el usuario; el form arma month y setea user
+            cd = form.cleaned_data
+            month_key = str(cd.get("month") or cd.get("month_choice") or "").strip().lower()[:3]
+
+            qs = GasConsumption.objects.filter(
+                user=request.user,
+                year=cd["year"],
+                month__istartswith=month_key,
+            )
+            obj = qs.first()
+            if obj:
+                obj.month = month_key
+                obj.m3_water = cd.get("m3_water") or 0
+                obj.m3_gas   = cd.get("m3_gas") or 0
+                obj.cost     = cd.get("cost") or 0
+                obj.save()
+            else:
+                GasConsumption.objects.create(
+                    user=request.user, year=cd["year"], month=month_key,
+                    m3_water=cd.get("m3_water") or 0,
+                    m3_gas=cd.get("m3_gas") or 0,
+                    cost=cd.get("cost") or 0,
+                )
+
             messages.success(request, "Consumo guardado correctamente.")
             return redirect("user_dashboard")
         else:
             messages.error(request, "Revisa los datos del formulario.")
     else:
         form = GasConsumptionForm()
+
 
     qs = GasConsumption.objects.filter(user=user).order_by("-year", "-id")
 
@@ -702,23 +758,26 @@ def admin_add_consumption(request):
     except (KeyError, ValueError, TypeError):
         return JsonResponse({"ok": False, "error": "Parámetros inválidos."}, status=400)
 
-    # normalizar mes a abreviatura 'ene'..'dic'
     month_key = month_raw[:3]
     if month_key not in MONTH_INDEX:
         return JsonResponse({"ok": False, "error": "Mes inválido."}, status=400)
 
-    # upsert en GasConsumption por (user, year, month)
-    obj, created = GasConsumption.objects.get_or_create(
-        user_id=user_id, year=year, month=month_key,
-        defaults={"m3_water": m3_water, "m3_gas": m3_gas, "cost": cost},
-    )
-    if not created:
+    qs = GasConsumption.objects.filter(user_id=user_id, year=year, month__istartswith=month_key)
+    obj = qs.first()
+    if obj:
+        obj.month = month_key
         obj.m3_water = m3_water
         obj.m3_gas   = m3_gas
         obj.cost     = cost
         obj.save()
+    else:
+        GasConsumption.objects.create(
+            user_id=user_id, year=year, month=month_key,
+            m3_water=m3_water, m3_gas=m3_gas, cost=cost
+        )
 
     return JsonResponse({"ok": True})
+
 # views.py
 from django.contrib import messages
 from django.contrib.auth import get_user_model
