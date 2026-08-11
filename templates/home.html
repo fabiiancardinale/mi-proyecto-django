@@ -1,16 +1,22 @@
 {% extends "base.html" %}
 {% block title %}Inicio | EMATEL{% endblock %}
+
 {% block content %}
 <div class="card">
-  <h2>Inicio</h2>
-  {% if request.user.is_authenticated %}
-    <p>Hola <strong>{{ request.user.username }}</strong> (rol: {{ request.user.role }})</p>
-    <p>Ir a:
-      <a href="{% url 'admin_dashboard' %}">Panel Admin</a> |
-      <a href="{% url 'user_dashboard' %}">Panel Usuario</a>
+  <div class="card-body center" style="padding:var(--sp-10) var(--sp-6)">
+    <div class="brand-mark" style="width:56px;height:56px;margin:0 auto var(--sp-5);font-size:22px;border-radius:var(--r-lg)">
+      <i class="fas fa-broadcast-tower"></i>
+    </div>
+    <h1>Sistema de monitoreo EMATEL</h1>
+    <p class="muted" style="margin-top:var(--sp-3);max-width:520px;margin-inline:auto">
+      Consulta el consumo de agua y gas de tus calderas, revisa comparativas históricas
+      y descarga reportes.
     </p>
-  {% else %}
-    <p><a href="{% url 'login' %}">Inicia sesión</a> para continuar.</p>
-  {% endif %}
+    <div class="btn-row" style="justify-content:center;margin-top:var(--sp-6)">
+      <a href="{% url 'login' %}" class="btn btn-primary">
+        <i class="fas fa-arrow-right-to-bracket"></i> Iniciar sesión
+      </a>
+    </div>
+  </div>
 </div>
 {% endblock %}

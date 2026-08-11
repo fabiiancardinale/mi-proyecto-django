@@ -4,10 +4,11 @@ djangorestframework-simplejwt>=5.3.1
 django-cors-headers>=4.3.1
 whitenoise>=6.6.0
 
-# Cliente MySQL (elige uno de estos según lo que uses)
+# Cliente MySQL
 mysqlclient>=2.2.0
-# o alternativamente:
-# PyMySQL>=1.1.0
+
+# Generacion de reportes PDF (accounts.views._build_pdf)
+reportlab>=4.1.0
 
 # Utilidades
 python-dotenv>=1.0.1

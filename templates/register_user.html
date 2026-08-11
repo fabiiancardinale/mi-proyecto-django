@@ -1,145 +1,167 @@
 {% extends "base.html" %}
-{% load static %}
-{% block title %}Crear usuario | EMATEL{% endblock %}
+{% block title %}Nuevo usuario | EMATEL{% endblock %}
 
 {% block content %}
-<div class="card" style="max-width:900px;margin:24px auto;">
 
-  {% if messages %}
-    {% for m in messages %}
-      <div class="alert alert-{{ m.tags }}">{{ m }}</div>
-    {% endfor %}
-  {% endif %}
-
-  {% if uform.errors or pform.errors %}
-    <div class="alert alert-danger" role="alert">
-      Revisa los campos, hay errores en el formulario.
-    </div>
-  {% endif %}
-
-  <h2 style="margin-top:0;">Crear nuevo usuario</h2>
-
-  <form method="post" novalidate>
-    {% csrf_token %}
-
-    <!-- Datos de cuenta -->
-    <h3 style="margin:16px 0 8px;">Cuenta</h3>
-    <div class="grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;">
-
-      <div class="form-row">
-        <label class="label" for="id_username">Usuario</label>
-        {{ uform.username }}
-        {% for e in uform.username.errors %}<div class="err">{{ e }}</div>{% endfor %}
-      </div>
-
-      <div class="form-row">
-        <label class="label" for="id_email">Email</label>
-        {{ uform.email }}
-        {% for e in uform.email.errors %}<div class="err">{{ e }}</div>{% endfor %}
-      </div>
-
-      <div class="form-row">
-        <label class="label" for="id_role">Rol</label>
-        {{ uform.role }}
-        {% for e in uform.role.errors %}<div class="err">{{ e }}</div>{% endfor %}
-      </div>
-
-      <div class="form-row">
-        <label class="label" for="id_password1">Contraseña</label>
-        {{ uform.password1 }}
-        {% for e in uform.password1.errors %}<div class="err">{{ e }}</div>{% endfor %}
-      </div>
-
-      <div class="form-row">
-        <label class="label" for="id_password2">Confirmar contraseña</label>
-        {{ uform.password2 }}
-        {% for e in uform.password2.errors %}<div class="err">{{ e }}</div>{% endfor %}
-      </div>
-
-    </div>
-
-    {% if uform.non_field_errors %}
-      <div class="err" style="margin-top:6px;">{{ uform.non_field_errors }}</div>
-    {% endif %}
-
-    <!-- Datos de perfil -->
-    <h3 style="margin:24px 0 8px;">Datos del Sitio / Cliente</h3>
-    <div class="grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;">
-
-      <div class="form-row">
-        <label class="label" for="id_location">Ubicación</label>
-        {{ pform.location }}
-        {% for e in pform.location.errors %}<div class="err">{{ e }}</div>{% endfor %}
-      </div>
-
-      <div class="form-row">
-        <label class="label" for="id_external_id">ID</label>
-        {{ pform.external_id }}
-        {% for e in pform.external_id.errors %}<div class="err">{{ e }}</div>{% endfor %}
-      </div>
-
-      <div class="form-row">
-        <label class="label" for="id_manager_name">Encargado</label>
-        {{ pform.manager_name }}
-        {% for e in pform.manager_name.errors %}<div class="err">{{ e }}</div>{% endfor %}
-      </div>
-
-      <div class="form-row">
-        <label class="label" for="id_phone">Teléfono</label>
-        {{ pform.phone }}
-        {% for e in pform.phone.errors %}<div class="err">{{ e }}</div>{% endfor %}
-      </div>
-
-      <div class="form-row" style="grid-column:span 2;">
-        <label class="label" for="id_address">Dirección</label>
-        {{ pform.address }}
-        {% for e in pform.address.errors %}<div class="err">{{ e }}</div>{% endfor %}
-      </div>
-
-      <div class="form-row" style="grid-column:span 2;">
-        <label class="label" for="id_link">Link</label>
-        {{ pform.link }}
-        {% for e in pform.link.errors %}<div class="err">{{ e }}</div>{% endfor %}
-      </div>
-
-      <!-- Mantenciones -->
-      <div class="form-row">
-        <label class="label" for="id_last_maintenance">Última mantención</label>
-        {{ pform.last_maintenance }}
-        {% for e in pform.last_maintenance.errors %}<div class="err">{{ e }}</div>{% endfor %}
-      </div>
-
-      <div class="form-row">
-        <label class="label" for="id_next_maintenance">Próxima mantención</label>
-        {{ pform.next_maintenance }}
-        {% for e in pform.next_maintenance.errors %}<div class="err">{{ e }}</div>{% endfor %}
-      </div>
-
-      <div class="form-row">
-        <label class="label" for="id_maintenance_interval_months">Intervalo (meses)</label>
-        {{ pform.maintenance_interval_months }}
-        {% for e in pform.maintenance_interval_months.errors %}<div class="err">{{ e }}</div>{% endfor %}
-      </div>
-
-    </div>
-
-    {% if pform.non_field_errors %}
-      <div class="err" style="margin-top:6px;">{{ pform.non_field_errors }}</div>
-    {% endif %}
-
-    <div class="form-actions" style="margin-top:16px;">
-      <button class="btn btn-primary" type="submit">Crear</button>
-      <a href="{% url 'admin_dashboard' %}" class="btn">Cancelar</a>
-    </div>
-  </form>
+<div class="page-head">
+  <div>
+    <h1><i class="fas fa-user-plus"></i> Nuevo usuario</h1>
+    <p class="sub">Crea la cuenta y configura los datos del sitio del cliente</p>
+  </div>
+  <div class="actions">
+    <a href="{% url 'admin_dashboard' %}" class="btn">
+      <i class="fas fa-arrow-left"></i> Volver al panel
+    </a>
+  </div>
 </div>
 
-<script>
-  // Añade la clase 'input' a los widgets por si tu CSS la requiere
-  [
-    'id_username','id_email','id_role','id_password1','id_password2',
-    'id_location','id_external_id','id_manager_name','id_phone','id_address','id_link',
-    'id_last_maintenance','id_next_maintenance','id_maintenance_interval_months'
-  ].forEach(id => document.getElementById(id)?.classList.add('input'));
-</script>
+{% if uform.errors or pform.errors %}
+  <div class="alert alert-error">
+    <i class="fas fa-circle-exclamation"></i>
+    <div>Hay errores en el formulario. Revisa los campos marcados en rojo.</div>
+  </div>
+{% endif %}
+
+<form method="post" class="stack-5" novalidate>
+  {% csrf_token %}
+
+  <!-- =========================== CUENTA =========================== -->
+  <section class="card">
+    <div class="card-head">
+      <div>
+        <h2><i class="fas fa-user-shield"></i> Datos de la cuenta</h2>
+        <p class="sub">Credenciales de acceso y rol dentro del sistema</p>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="form-grid" style="align-items:start">
+        <div class="field {% if uform.username.errors %}has-error{% endif %}">
+          <label class="label" for="{{ uform.username.id_for_label }}">Usuario</label>
+          {{ uform.username }}
+          {% if uform.username.errors %}<div class="err">{{ uform.username.errors|striptags }}</div>{% endif %}
+        </div>
+
+        <div class="field {% if uform.email.errors %}has-error{% endif %}">
+          <label class="label" for="{{ uform.email.id_for_label }}">Email</label>
+          {{ uform.email }}
+          {% if uform.email.errors %}<div class="err">{{ uform.email.errors|striptags }}</div>{% endif %}
+        </div>
+
+        <div class="field {% if uform.role.errors %}has-error{% endif %}">
+          <label class="label" for="{{ uform.role.id_for_label }}">Rol</label>
+          {{ uform.role }}
+          {% if uform.role.errors %}<div class="err">{{ uform.role.errors|striptags }}</div>{% endif %}
+        </div>
+
+        <div class="field {% if uform.password1.errors %}has-error{% endif %}">
+          <label class="label" for="{{ uform.password1.id_for_label }}">Contraseña</label>
+          {{ uform.password1 }}
+          {% if uform.password1.errors %}<div class="err">{{ uform.password1.errors|striptags }}</div>{% endif %}
+          <div class="help">Mínimo 8 caracteres, no puede ser solo numérica ni demasiado común.</div>
+        </div>
+
+        <div class="field {% if uform.password2.errors %}has-error{% endif %}">
+          <label class="label" for="{{ uform.password2.id_for_label }}">Repetir contraseña</label>
+          {{ uform.password2 }}
+          {% if uform.password2.errors %}<div class="err">{{ uform.password2.errors|striptags }}</div>{% endif %}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ SITIO ============================ -->
+  <section class="card">
+    <div class="card-head">
+      <div>
+        <h2><i class="fas fa-location-dot"></i> Datos del sitio</h2>
+        <p class="sub">Incluye el link del equipo Wecon que verá el cliente en su panel</p>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="form-grid" style="align-items:start">
+        <div class="field {% if pform.location.errors %}has-error{% endif %}">
+          <label class="label" for="{{ pform.location.id_for_label }}">Ubicación</label>
+          {{ pform.location }}
+          {% if pform.location.errors %}<div class="err">{{ pform.location.errors|striptags }}</div>{% endif %}
+        </div>
+
+        <div class="field {% if pform.external_id.errors %}has-error{% endif %}">
+          <label class="label" for="{{ pform.external_id.id_for_label }}">ID externo</label>
+          {{ pform.external_id }}
+          {% if pform.external_id.errors %}<div class="err">{{ pform.external_id.errors|striptags }}</div>{% endif %}
+        </div>
+
+        <div class="field {% if pform.manager_name.errors %}has-error{% endif %}">
+          <label class="label" for="{{ pform.manager_name.id_for_label }}">Encargado</label>
+          {{ pform.manager_name }}
+          {% if pform.manager_name.errors %}<div class="err">{{ pform.manager_name.errors|striptags }}</div>{% endif %}
+        </div>
+
+        <div class="field {% if pform.phone.errors %}has-error{% endif %}">
+          <label class="label" for="{{ pform.phone.id_for_label }}">Teléfono</label>
+          {{ pform.phone }}
+          {% if pform.phone.errors %}<div class="err">{{ pform.phone.errors|striptags }}</div>{% endif %}
+        </div>
+      </div>
+
+      <div class="field" style="margin-top:var(--sp-4)">
+        <label class="label" for="{{ pform.address.id_for_label }}">Dirección</label>
+        {{ pform.address }}
+        {% if pform.address.errors %}<div class="err">{{ pform.address.errors|striptags }}</div>{% endif %}
+      </div>
+
+      <div class="field {% if pform.link.errors %}has-error{% endif %}" style="margin-top:var(--sp-4)">
+        <label class="label" for="{{ pform.link.id_for_label }}">
+          <i class="fas fa-link"></i> Link del equipo (Wecon)
+        </label>
+        {{ pform.link }}
+        <div class="help">
+          Enlace de monitoreo que el cliente abrirá con el botón «Ver mi caldera».
+        </div>
+        {% if pform.link.errors %}<div class="err">{{ pform.link.errors|striptags }}</div>{% endif %}
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================= MANTENCIONES ========================= -->
+  <section class="card">
+    <div class="card-head">
+      <div>
+        <h2><i class="fas fa-screwdriver-wrench"></i> Mantenciones</h2>
+        <p class="sub">Si dejas vacía la próxima fecha, se calcula sumando el intervalo</p>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="form-grid" style="align-items:start">
+        <div class="field {% if pform.last_maintenance.errors %}has-error{% endif %}">
+          <label class="label" for="{{ pform.last_maintenance.id_for_label }}">Última mantención</label>
+          {{ pform.last_maintenance }}
+          {% if pform.last_maintenance.errors %}<div class="err">{{ pform.last_maintenance.errors|striptags }}</div>{% endif %}
+        </div>
+
+        <div class="field {% if pform.next_maintenance.errors %}has-error{% endif %}">
+          <label class="label" for="{{ pform.next_maintenance.id_for_label }}">
+            Próxima mantención <span class="opt">(opcional)</span>
+          </label>
+          {{ pform.next_maintenance }}
+          {% if pform.next_maintenance.errors %}<div class="err">{{ pform.next_maintenance.errors|striptags }}</div>{% endif %}
+        </div>
+
+        <div class="field {% if pform.maintenance_interval_months.errors %}has-error{% endif %}">
+          <label class="label" for="{{ pform.maintenance_interval_months.id_for_label }}">Intervalo (meses)</label>
+          {{ pform.maintenance_interval_months }}
+          {% if pform.maintenance_interval_months.errors %}<div class="err">{{ pform.maintenance_interval_months.errors|striptags }}</div>{% endif %}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="btn-row" style="justify-content:flex-end">
+    <a href="{% url 'admin_dashboard' %}" class="btn">Cancelar</a>
+    <button type="submit" class="btn btn-primary">
+      <i class="fas fa-user-plus"></i> Crear usuario
+    </button>
+  </div>
+</form>
+
 {% endblock %}

@@ -1,63 +1,93 @@
 # accounts/forms.py
-from django import forms
-from django.contrib.auth.forms import UserCreationForm
-from django.contrib.auth import get_user_model
-from .models import Profile
+"""Formularios del panel EMATEL."""
 
-User = get_user_model()
+from __future__ import annotations
 
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
-from django.contrib.auth import get_user_model
 
+from . import months
+from .models import GasConsumption, Profile, User, sumar_meses
+
+CLASE_CAMPO = "input"
+
+
+def _aplicar_clase(formulario: forms.BaseForm) -> None:
+    """Pone la clase visual comun en todos los widgets del formulario."""
+    for campo in formulario.fields.values():
+        css = campo.widget.attrs.get("class", "")
+        if CLASE_CAMPO not in css.split():
+            campo.widget.attrs["class"] = f"{css} {CLASE_CAMPO}".strip()
+
+
+# =============================================================================
+# Cuentas
+# =============================================================================
 class AdminCreateUserForm(UserCreationForm):
+    """Alta de usuario desde el panel."""
+
     role = forms.ChoiceField(
-        choices=get_user_model().Roles.choices,
+        choices=User.Roles.choices,
         label="Rol",
-        initial=get_user_model().Roles.USER,
+        initial=User.Roles.USER,
     )
 
     class Meta(UserCreationForm.Meta):
-        model = get_user_model()
-        fields = ("username", "email", "role")  # password1/2 los añade el base class
-        widgets = {
-            "username": forms.TextInput(attrs={"class": "input"}),
-            "email": forms.EmailInput(attrs={"class": "input"}),
-        }
-
-
-
-class CreateUserForm(UserCreationForm):
-    email = forms.EmailField(required=True)
-
-    class Meta:
         model = User
-        fields = ("username", "email", "password1", "password2")
-        help_texts = {k: "" for k in fields}
+        fields = ("username", "email", "role")  # password1/2 los añade la clase base
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        for name, field in self.fields.items():
-            field.widget.attrs.setdefault("class", "input")
-
-from django import forms
-from django.core.exceptions import ValidationError
-from .models import Profile
-import calendar
+        _aplicar_clase(self)
+        # Los textos de ayuda largos de Django se reemplazan por el mensaje
+        # corto que ya muestra la plantilla.
+        for campo in self.fields.values():
+            campo.help_text = ""
 
 
-def _add_months(d, months):
-    """Suma meses a una fecha (maneja fin de mes)."""
-    if d is None:
-        return None
-    m = d.month - 1 + int(months or 0)
-    y = d.year + m // 12
-    m = m % 12 + 1
-    day = min(d.day, calendar.monthrange(y, m)[1])
-    return d.replace(year=y, month=m, day=day)
+class AdminEditUserForm(forms.ModelForm):
+    """Edicion de cuenta desde el modal del panel.
+
+    Valida unicidad de usuario y formato de email, cosa que la version
+    anterior no hacia porque leia el POST en crudo.
+    """
+
+    class Meta:
+        model = User
+        fields = ("username", "email", "role", "is_active")
+        labels = {
+            "username": "Usuario",
+            "email": "Email",
+            "role": "Rol",
+            "is_active": "Estado",
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["email"].required = False
+        _aplicar_clase(self)
 
 
-class ProfileForm(forms.ModelForm):
+# =============================================================================
+# Perfil del cliente
+# =============================================================================
+class _BaseProfileForm(forms.ModelForm):
+    """Comportamiento compartido: validacion del link de Wecon."""
+
+    def clean_link(self) -> str:
+        url = (self.cleaned_data.get("link") or "").strip()
+        if not url:
+            return ""
+        # URLField ya valida el formato. Aqui cerramos la puerta a esquemas
+        # peligrosos como javascript: en un enlace que se abre con _blank.
+        if not url.lower().startswith(("http://", "https://")):
+            raise forms.ValidationError("El link debe empezar con http:// o https://")
+        return url
+
+
+class ProfileForm(_BaseProfileForm):
+    """Perfil completo, usado en el alta de usuario."""
+
     class Meta:
         model = Profile
         fields = (
@@ -70,139 +100,156 @@ class ProfileForm(forms.ModelForm):
             "manager_name": "Encargado",
             "phone": "Teléfono",
             "address": "Dirección",
-            "link": "Link",
+            "link": "Link del equipo (Wecon)",
             "last_maintenance": "Última mantención",
             "next_maintenance": "Próxima mantención",
             "maintenance_interval_months": "Intervalo mantención (meses)",
         }
         widgets = {
-            "location": forms.TextInput(attrs={"class": "input"}),
-            "external_id": forms.TextInput(attrs={"class": "input"}),
-            "manager_name": forms.TextInput(attrs={"class": "input"}),
-            "phone": forms.TextInput(attrs={"placeholder": "+56 9 7948 2430", "class": "input"}),
-            "address": forms.TextInput(attrs={"placeholder": "BELLAVISTA 165", "class": "input"}),
-            "link": forms.URLInput(attrs={"placeholder": "https://...", "class": "input"}),
-
-            # Nuevos widgets
-            "last_maintenance": forms.DateInput(attrs={"type": "date", "class": "input"}),
-            "next_maintenance": forms.DateInput(attrs={"type": "date", "class": "input"}),
+            "phone": forms.TextInput(attrs={"placeholder": "+56 9 1234 5678"}),
+            "address": forms.TextInput(attrs={"placeholder": "Bellavista 165"}),
+            "link": forms.URLInput(attrs={
+                "placeholder": "https://servidor-wecon/...",
+                "spellcheck": "false",
+            }),
+            "last_maintenance": forms.DateInput(attrs={"type": "date"}),
+            "next_maintenance": forms.DateInput(attrs={"type": "date"}),
             "maintenance_interval_months": forms.NumberInput(
-                attrs={"class": "input", "min": 1, "max": 60, "step": 1}
+                attrs={"min": 1, "max": 60, "step": 1}
             ),
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        _aplicar_clase(self)
+
     def clean(self):
-        cleaned = super().clean()
-        last_m = cleaned.get("last_maintenance")
-        next_m = cleaned.get("next_maintenance")
-        interval = cleaned.get("maintenance_interval_months") or 12
+        datos = super().clean()
+        ultima = datos.get("last_maintenance")
+        proxima = datos.get("next_maintenance")
+        intervalo = datos.get("maintenance_interval_months") or 12
 
-        # Validación de coherencia
-        if last_m and next_m and next_m < last_m:
-            self.add_error("next_maintenance", "La próxima mantención no puede ser anterior a la última.")
+        if ultima and proxima and proxima < ultima:
+            self.add_error(
+                "next_maintenance",
+                "La próxima mantención no puede ser anterior a la última.",
+            )
 
-        # Autocalcular próxima si no se ingresó y hay última + intervalo
-        if last_m and not next_m:
-            cleaned["next_maintenance"] = _add_months(last_m, interval)
+        if ultima and not proxima:
+            datos["next_maintenance"] = sumar_meses(ultima, intervalo)
 
-        return cleaned
+        return datos
 
-# accounts/forms.py
-from django import forms
-from .models import GasConsumption
 
-# accounts/forms.py
-from django import forms
-from .models import GasConsumption
-# accounts/forms.py
-from django import forms
-from .models import GasConsumption
+class ProfilePanelForm(_BaseProfileForm):
+    """Subconjunto editable desde el modal del panel, incluido el link.
 
-# accounts/forms.py
-from django import forms
-from .models import GasConsumption
+    Este es el formulario que faltaba: antes el link solo se podia tocar desde
+    el admin de Django porque el modal no lo incluia.
+    """
 
-MONTH_CHOICES = [
-    ("ene", "Enero"), ("feb", "Febrero"), ("mar", "Marzo"), ("abr", "Abril"),
-    ("may", "Mayo"), ("jun", "Junio"), ("jul", "Julio"), ("ago", "Agosto"),
-    ("sep", "Septiembre"), ("oct", "Octubre"), ("nov", "Noviembre"), ("dic", "Diciembre"),
-]
+    class Meta:
+        model = Profile
+        fields = ("location", "external_id", "manager_name", "phone", "address", "link")
+        labels = {
+            "location": "Ubicación",
+            "external_id": "ID",
+            "manager_name": "Encargado",
+            "phone": "Teléfono",
+            "address": "Dirección",
+            "link": "Link del equipo (Wecon)",
+        }
+        widgets = {
+            "phone": forms.TextInput(attrs={"placeholder": "+56 9 1234 5678"}),
+            "link": forms.URLInput(attrs={
+                "placeholder": "https://servidor-wecon/...",
+                "spellcheck": "false",
+            }),
+        }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        _aplicar_clase(self)
+
+
+class PreferenciasReporteForm(forms.ModelForm):
+    """Preferencias de reporte, guardadas por AJAX desde el panel de usuario.
+
+    Antes la vista hacia setattr() directo sobre el perfil con lo que llegara
+    en el JSON, sin validar que la frecuencia o el formato fueran valores
+    aceptados ni que el email tuviera formato correcto.
+    """
+
+    class Meta:
+        model = Profile
+        fields = ("report_frequency", "report_format", "report_email")
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for campo in self.fields.values():
+            campo.required = False
+
+
+# =============================================================================
+# Consumo
+# =============================================================================
 class GasConsumptionForm(forms.ModelForm):
-    # Elegir año, mes y día
-    month_choice = forms.ChoiceField(choices=MONTH_CHOICES, label="Mes")
+    """Alta de consumo por parte del propio usuario."""
+
+    month_choice = forms.ChoiceField(choices=months.CHOICES, label="Mes")
     day = forms.IntegerField(label="Día", min_value=1, max_value=31, required=False)
 
     class Meta:
         model = GasConsumption
-        # Si no quieres costo, elimínalo de fields:
         fields = ["year", "month_choice", "day", "m3_water", "m3_gas"]
+        labels = {"m3_water": "M³ agua", "m3_gas": "M³ gas"}
         widgets = {
-            "year": forms.NumberInput(attrs={"min": 2000, "max": 2100, "placeholder": "2025", "class": "in"}),
-            "m3_water": forms.NumberInput(attrs={"step": "0.01", "class": "in"}),
-            "m3_gas": forms.NumberInput(attrs={"step": "0.01", "class": "in"}),
+            "year": forms.NumberInput(attrs={"min": 2000, "max": 2100, "placeholder": "2025"}),
+            "m3_water": forms.NumberInput(attrs={"step": "0.01", "min": "0"}),
+            "m3_gas": forms.NumberInput(attrs={"step": "0.01", "min": "0"}),
         }
-        labels = {
-            "m3_water": "M³ Agua",
-            "m3_gas": "M³ Gas",
-        }
-
-    def clean_year(self):
-        y = self.cleaned_data["year"]
-        if y < 2000 or y > 2100:
-            raise forms.ValidationError("Año fuera de rango.")
-        return y
-
-    def clean_day(self):
-        d = self.cleaned_data.get("day")
-        # Si lo quieres obligatorio, descomenta:
-        # if d is None:
-        #     raise forms.ValidationError("El día es obligatorio.")
-        return d
-
-    def save(self, commit=True, user=None):
-        """
-        Construye 'month' como 'abr-25' con 'month_choice' + 'year', asigna 'day'
-        y asocia el 'user' logeado.
-        """
-        instance = super().save(commit=False)
-        abbr = self.cleaned_data["month_choice"]         # ej 'jun'
-        year = self.cleaned_data["year"]                 # ej 2025
-        yy = str(year)[-2:]                              # '25'
-        instance.month = f"{abbr}-{yy}"
-        instance.day = self.cleaned_data.get("day") or None
-        if user is not None:
-            instance.user = user
-        if commit:
-            instance.save()
-        return instance
-
-
-
-
-
-# accounts/forms.py
-class AdminGasConsumptionForm(GasConsumptionForm):
-    user = forms.ModelChoiceField(
-        queryset=User.objects.order_by("username"),
-        label="Usuario",
-        required=True
-    )
-
-    class Meta(GasConsumptionForm.Meta):
-        fields = ["user"] + GasConsumptionForm.Meta.fields + ["cost"]  # quita "cost" si no existe
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        # El modelo declara 'month' con choices, pero aqui lo reemplazamos por
+        # month_choice, asi que 'month' no forma parte del formulario.
+        self.fields["year"].initial = self.fields["year"].initial or None
+        _aplicar_clase(self)
 
-        # todas las entradas con la misma clase visual
-        for name, field in self.fields.items():
-            css = field.widget.attrs.get("class", "")
-            field.widget.attrs["class"] = (css + " input").strip()
+    def clean_year(self) -> int:
+        anio = self.cleaned_data["year"]
+        if not 2000 <= anio <= 2100:
+            raise forms.ValidationError("El año debe estar entre 2000 y 2100.")
+        return anio
 
-        # afinamos algunos
-        self.fields["user"].widget.attrs.setdefault("style", "min-width:220px")
-        self.fields["month_choice"].widget.attrs.setdefault("class", "input select")
-        self.fields["year"].widget.attrs.update({"min": 2000, "max": 2100, "placeholder": "2025"})
-        self.fields["m3_water"].widget.attrs.setdefault("step", "0.01")
-        self.fields["m3_gas"].widget.attrs.setdefault("step", "0.01")
+    def clean(self):
+        datos = super().clean()
+        agua, gas = datos.get("m3_water"), datos.get("m3_gas")
+        if agua in (None, "") and gas in (None, ""):
+            raise forms.ValidationError(
+                "Ingresa al menos el consumo de agua o el de gas."
+            )
+        return datos
+
+
+class AdminGasConsumptionForm(GasConsumptionForm):
+    """Igual que el anterior, pero el admin elige el usuario y el costo."""
+
+    user = forms.ModelChoiceField(
+        queryset=User.objects.order_by("username"),
+        label="Usuario",
+        required=True,
+    )
+
+    class Meta(GasConsumptionForm.Meta):
+        fields = ["user"] + GasConsumptionForm.Meta.fields + ["cost"]
+        widgets = {
+            **GasConsumptionForm.Meta.widgets,
+            "cost": forms.NumberInput(attrs={"step": "1", "min": "0"}),
+        }
+        labels = {**GasConsumptionForm.Meta.labels, "cost": "Costo (CLP)"}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["user"].widget.attrs.setdefault("style", "min-width:200px")
+        _aplicar_clase(self)

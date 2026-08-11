@@ -7,15 +7,25 @@ __pycache__/
 # Entorno virtual
 .venv/
 venv/
+env/
 
 # Django
 db.sqlite3
-/staticfiles/
-/media/
+db.sqlite3-journal
+staticfiles/
+media/
+*.log
 
 # Archivos de entorno
 .env
+.env.*
+!.env.example
+
+# Exportaciones de links (pueden contener datos de clientes)
+links_*.csv
 
 # VSCode / IDEs
 .vscode/
 .idea/
+*.swp
+.DS_Store
