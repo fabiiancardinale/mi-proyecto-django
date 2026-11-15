@@ -151,6 +151,7 @@ accounts/
   months.py         Fuente única para interpretar y formatear meses
   reports.py        Reportes CSV y PDF
   api_views.py      API REST con JWT que usa la app (rutas en api_url.py, bajo /api/)
+  api_admin.py      API de administración de la app (clientes, resumen)
   admin.py          Registro en el admin de Django
   management/commands/
     links_wecon.py  Carga masiva de links
@@ -194,7 +195,7 @@ autocontenidas y seguir funcionando aunque el código de la app cambie.
 python manage.py test accounts
 ```
 
-76 pruebas que cubren la normalización de meses, el alta de consumo sin
+86 pruebas que cubren la normalización de meses, el alta de consumo sin
 duplicados, los permisos por rol, la edición del link desde la interfaz y la
 generación de reportes.
 

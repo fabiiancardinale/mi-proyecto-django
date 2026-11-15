@@ -87,10 +87,32 @@ class ClienteApi {
     return Panel.desdeJson(datos as Map<String, dynamic>);
   }
 
-  Future<List<Cliente>> clientes({String busqueda = ''}) async {
-    final datos = await _get('/api/clientes/', {if (busqueda.isNotEmpty) 'q': busqueda});
-    return (datos as List).map((c) => Cliente.desdeJson(c as Map<String, dynamic>)).toList();
+  // ----------------------------------------------------- Administración
+
+  Future<ResumenAdmin> resumenAdmin() async =>
+      ResumenAdmin.desdeJson(await _get('/api/admin/resumen/') as Map<String, dynamic>);
+
+  /// [estado]: 'activos' o 'inactivos'. [rol]: 'admin' o 'user'.
+  Future<List<FichaCliente>> clientes({String busqueda = '', String? estado, String? rol}) async {
+    final datos = await _get('/api/clientes/', {
+      if (busqueda.isNotEmpty) 'q': busqueda,
+      'status': ?estado,
+      'role': ?rol,
+    });
+    return [for (final c in datos as List) FichaCliente.desdeJson(c as Map<String, dynamic>)];
   }
+
+  Future<FichaCliente> crearCliente(Map<String, Object?> datos) async =>
+      FichaCliente.desdeJson(await _post('/api/clientes/', datos) as Map<String, dynamic>);
+
+  /// Solo se modifican los campos enviados.
+  Future<FichaCliente> editarCliente(int id, Map<String, Object?> datos) async => FichaCliente.desdeJson(
+        await _conToken((t) => _http.patch(_uri('/api/clientes/$id/'), headers: _cabeceras(t), body: jsonEncode(datos)))
+            as Map<String, dynamic>,
+      );
+
+  Future<void> eliminarCliente(int id) =>
+      _conToken((t) => _http.delete(_uri('/api/clientes/$id/'), headers: _cabeceras(t)));
 
   /// Registra o actualiza un mes. Solo se envían los campos con valor, así
   /// que completar el gas de un mes que ya tenía agua no borra el agua.

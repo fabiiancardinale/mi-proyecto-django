@@ -6,8 +6,14 @@ App Flutter para los clientes de EMATEL. Usa la API REST del proyecto Django
 - **Clientes:** ven el consumo de agua y gas, el costo, la próxima mantención,
   gráficos que comparan años, el historial mes a mes y el botón «Ver mi
   caldera» (link de Wecon). Pueden registrar su consumo.
-- **Administradores:** ven la lista de clientes, entran al panel de cualquiera
-  y registran consumo con costo.
+- **Administradores** (rol administrador o superusuario):
+  - **Resumen:** usuarios, activos, clientes sin link de Wecon y mantenciones
+    vencidas o por vencer en 30 días, con acceso directo a cada cliente.
+  - **Clientes:** búsqueda y filtros (activos, inactivos, sin link, admins).
+  - **Ficha del cliente:** su panel de consumo, más su cuenta. Desde ahí se
+    edita (datos, link de Wecon, mantención, activar o desactivar), se
+    elimina o se registra consumo con costo.
+  - **Nuevo cliente:** crea la cuenta y el perfil.
 
 Al registrar un mes que ya existe solo cambian los campos que se completan:
 cargar el gas no borra el agua.
@@ -84,7 +90,11 @@ lib/
     inicio.dart           Decide: admin → clientes, cliente → su panel
     panel.dart            Indicadores, gráfico, historial, sitio
     registrar.dart        Formulario para registrar consumo
-    clientes.dart         Lista de clientes (administradores)
+    admin/
+      inicio_admin.dart   Pestañas Resumen y Clientes
+      resumen_admin.dart  Indicadores y clientes que requieren atención
+      lista_clientes.dart Búsqueda y filtros
+      editar_cliente.dart Alta y edición de clientes
   widgets/
     tarjetas.dart         Tarjetas, indicadores, variación, avisos
     grafico_consumo.dart  Gráfico de barras mensual
@@ -103,4 +113,7 @@ renueva sola; la sesión dura 30 días sin uso.
 | POST   | `/api/auth/refresh/` | Renovar el token                          |
 | GET    | `/api/panel/`        | Todo el panel (`?user_id=` para admin)    |
 | POST   | `/api/consumption/`  | Registrar o actualizar un mes             |
-| GET    | `/api/clientes/`     | Lista de clientes (solo admin, `?q=`)     |
+| GET    | `/api/admin/resumen/`| Indicadores del administrador             |
+| GET    | `/api/clientes/`     | Lista (`?q=`, `?status=`, `?role=`)       |
+| POST   | `/api/clientes/`     | Crear cliente                             |
+| GET/PATCH/DELETE | `/api/clientes/<id>/` | Ver, editar o eliminar un cliente |

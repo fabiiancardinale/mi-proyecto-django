@@ -6,7 +6,7 @@ Rutas (prefijo /api/):
   me/              GET   cuenta y perfil del usuario autenticado
   panel/           GET   todo lo que muestra el panel en una sola llamada
   consumption/     GET   registros; POST registra o actualiza un mes
-  clientes/        GET   listado de clientes (solo administradores)
+  admin/..., clientes/...  administración (ver api_admin.py)
   c_series/        GET   serie mensual de un año
 
 Un administrador puede consultar o registrar el consumo de otro usuario
@@ -15,7 +15,6 @@ pasando ``user_id`` (en la URL para GET, en el cuerpo para POST).
 
 from __future__ import annotations
 
-from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 
@@ -25,13 +24,14 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from . import months, services
+from .api_admin import es_admin
 from .api_serializers import GasConsumptionSerializer, MeSerializer
 from .forms import AdminGasConsumptionForm, GasConsumptionForm
 from .models import GasConsumption, User
 
 
 def _es_admin(user) -> bool:
-    return bool(user.is_superuser or user.is_admin())
+    return es_admin(user)
 
 
 def _usuario_objetivo(request, user_id):
@@ -180,6 +180,9 @@ def panel(request):
             "nombre": usuario.first_name or usuario.username,
             "email": usuario.email,
             "role": usuario.role,
+            # Incluye superusuarios: es lo que decide si la app muestra la
+            # vista de administrador.
+            "es_admin": es_admin(usuario),
         },
         "perfil": {
             "location": perfil.location,
@@ -210,29 +213,3 @@ def panel(request):
             for f in historial
         ],
     })
-
-
-@api_view(["GET"])
-@permission_classes([IsAuthenticated])
-def clientes(request):
-    """Listado de usuarios para el administrador (``?q=`` filtra)."""
-    if not _es_admin(request.user):
-        return Response({"detail": "Solo para administradores."}, status=403)
-
-    usuarios = User.objects.select_related("profile").order_by("username")
-    texto = (request.GET.get("q") or "").strip()
-    if texto:
-        usuarios = usuarios.filter(Q(username__icontains=texto) | Q(email__icontains=texto))
-
-    return Response([
-        {
-            "id": u.id,
-            "username": u.username,
-            "email": u.email,
-            "role": u.role,
-            "is_active": u.is_active,
-            "location": getattr(getattr(u, "profile", None), "location", ""),
-            "tiene_link": bool(getattr(getattr(u, "profile", None), "link", "")),
-        }
-        for u in usuarios
-    ])

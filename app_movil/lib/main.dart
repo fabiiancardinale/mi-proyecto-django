@@ -27,6 +27,9 @@ class EmatelApp extends StatelessWidget {
       title: 'EMATEL',
       debugShowCheckedModeBanner: false,
       theme: construirTema(),
+      locale: const Locale('es', 'CL'),
+      supportedLocales: const [Locale('es', 'CL'), Locale('es')],
+      localizationsDelegates: GlobalMaterialLocalizations.delegates,
       home: conSesion ? PantallaInicio(api: api) : PantallaLogin(api: api),
     );
   }

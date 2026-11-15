@@ -5,7 +5,14 @@ double? _d(Object? v) => v == null ? null : (v as num).toDouble();
 DateTime? _f(Object? v) => v == null ? null : DateTime.tryParse(v as String);
 
 class Usuario {
-  Usuario({required this.id, required this.username, required this.nombre, required this.email, required this.role});
+  Usuario({
+    required this.id,
+    required this.username,
+    required this.nombre,
+    required this.email,
+    required this.role,
+    required this.esAdmin,
+  });
 
   final int id;
   final String username;
@@ -13,7 +20,8 @@ class Usuario {
   final String email;
   final String role;
 
-  bool get esAdmin => role == 'admin';
+  /// Rol administrador o superusuario: ve la parte de administración.
+  final bool esAdmin;
 
   factory Usuario.desdeJson(Map<String, dynamic> j) => Usuario(
         id: j['id'] as int,
@@ -21,6 +29,7 @@ class Usuario {
         nombre: (j['nombre'] ?? j['username']) as String,
         email: (j['email'] ?? '') as String,
         role: (j['role'] ?? 'user') as String,
+        esAdmin: (j['es_admin'] ?? j['role'] == 'admin') as bool,
       );
 }
 
@@ -163,32 +172,110 @@ class Panel {
       );
 }
 
-class Cliente {
-  Cliente({
+/// Cuenta y perfil de un cliente, como los ve el administrador.
+class FichaCliente {
+  FichaCliente({
     required this.id,
     required this.username,
     required this.email,
-    required this.ubicacion,
-    required this.activo,
-    required this.tieneLink,
+    required this.role,
     required this.esAdmin,
+    required this.activo,
+    required this.creado,
+    required this.ultimoAcceso,
+    required this.ubicacion,
+    required this.idExterno,
+    required this.encargado,
+    required this.telefono,
+    required this.direccion,
+    required this.link,
+    required this.ultimaMantencion,
+    required this.proximaMantencion,
+    required this.diasParaMantencion,
+    required this.intervaloMeses,
   });
 
   final int id;
   final String username;
   final String email;
-  final String ubicacion;
-  final bool activo;
-  final bool tieneLink;
+  final String role;
   final bool esAdmin;
+  final bool activo;
+  final DateTime? creado;
+  final DateTime? ultimoAcceso;
+  final String ubicacion;
+  final String idExterno;
+  final String encargado;
+  final String telefono;
+  final String direccion;
+  final String link;
+  final DateTime? ultimaMantencion;
+  final DateTime? proximaMantencion;
+  final int? diasParaMantencion;
+  final int intervaloMeses;
 
-  factory Cliente.desdeJson(Map<String, dynamic> j) => Cliente(
+  bool get tieneLink => link.isNotEmpty;
+
+  factory FichaCliente.desdeJson(Map<String, dynamic> j) => FichaCliente(
         id: j['id'] as int,
         username: j['username'] as String,
         email: (j['email'] ?? '') as String,
-        ubicacion: (j['location'] ?? '') as String,
+        role: (j['role'] ?? 'user') as String,
+        esAdmin: (j['es_admin'] ?? false) as bool,
         activo: (j['is_active'] ?? true) as bool,
-        tieneLink: (j['tiene_link'] ?? false) as bool,
-        esAdmin: j['role'] == 'admin',
+        creado: _f(j['date_joined']),
+        ultimoAcceso: _f(j['last_login']),
+        ubicacion: (j['location'] ?? '') as String,
+        idExterno: (j['external_id'] ?? '') as String,
+        encargado: (j['manager_name'] ?? '') as String,
+        telefono: (j['phone'] ?? '') as String,
+        direccion: (j['address'] ?? '') as String,
+        link: (j['link'] ?? '') as String,
+        ultimaMantencion: _f(j['last_maintenance']),
+        proximaMantencion: _f(j['next_maintenance']),
+        diasParaMantencion: j['days_to_next_maintenance'] as int?,
+        intervaloMeses: (j['maintenance_interval_months'] ?? 12) as int,
+      );
+}
+
+class ConteoAdmin {
+  ConteoAdmin({
+    required this.total,
+    required this.activos,
+    required this.inactivos,
+    required this.sinLink,
+    required this.mantencionVencida,
+    required this.mantencionProxima,
+  });
+
+  final int total;
+  final int activos;
+  final int inactivos;
+  final int sinLink;
+  final int mantencionVencida;
+  final int mantencionProxima;
+
+  factory ConteoAdmin.desdeJson(Map<String, dynamic> j) => ConteoAdmin(
+        total: j['total'] as int,
+        activos: j['activos'] as int,
+        inactivos: j['inactivos'] as int,
+        sinLink: j['sin_link'] as int,
+        mantencionVencida: j['mantencion_vencida'] as int,
+        mantencionProxima: j['mantencion_proxima'] as int,
+      );
+}
+
+/// Pantalla de resumen del administrador.
+class ResumenAdmin {
+  ResumenAdmin({required this.conteo, required this.mantencion, required this.sinLink});
+
+  final ConteoAdmin conteo;
+  final List<FichaCliente> mantencion;
+  final List<FichaCliente> sinLink;
+
+  factory ResumenAdmin.desdeJson(Map<String, dynamic> j) => ResumenAdmin(
+        conteo: ConteoAdmin.desdeJson(j['conteo'] as Map<String, dynamic>),
+        mantencion: [for (final f in j['mantencion'] as List) FichaCliente.desdeJson(f as Map<String, dynamic>)],
+        sinLink: [for (final f in j['sin_link'] as List) FichaCliente.desdeJson(f as Map<String, dynamic>)],
       );
 }

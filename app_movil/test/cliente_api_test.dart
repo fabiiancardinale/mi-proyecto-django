@@ -81,4 +81,21 @@ void main() {
       throwsA(isA<ErrorApi>().having((e) => e.errores['month'], 'errores', ['Mes inválido.'])),
     );
   });
+
+  test('administración: editar usa PATCH y eliminar acepta respuesta vacía', () async {
+    final vistas = <String>[];
+    final api = ClienteApi(cliente: MockClient((r) async {
+      if (r.url.path == '/api/auth/token/') return _json({'access': 'a', 'refresh': 'r'});
+      vistas.add('${r.method} ${r.url.path} ${r.body}');
+      if (r.method == 'DELETE') return http.Response('', 204);
+      return _json({'id': 7, 'username': 'hotel', 'link': 'https://w/1', 'es_admin': false, 'is_active': true});
+    }));
+    await api.iniciarSesion('jefe', 'x', servidor: 'http://s');
+
+    final f = await api.editarCliente(7, {'link': 'https://w/1'});
+    expect(f.link, 'https://w/1');
+    expect(f.tieneLink, isTrue);
+    await api.eliminarCliente(7);
+    expect(vistas, ['PATCH /api/clientes/7/ {"link":"https://w/1"}', 'DELETE /api/clientes/7/ ']);
+  });
 }

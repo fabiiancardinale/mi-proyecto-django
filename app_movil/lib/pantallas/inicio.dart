@@ -2,7 +2,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../api/cliente_api.dart';
 import '../api/modelos.dart';
-import 'clientes.dart';
+import 'admin/inicio_admin.dart';
 import 'login.dart';
 import 'panel.dart';
 
@@ -66,7 +66,7 @@ class _PantallaInicioState extends State<PantallaInicio> {
           return const Scaffold(body: Center(child: CircularProgressIndicator()));
         }
         return panel.usuario.esAdmin
-            ? PantallaClientes(api: widget.api, admin: panel.usuario)
+            ? PantallaAdmin(api: widget.api, admin: panel.usuario)
             : PantallaPanel(api: widget.api, panelInicial: panel);
       },
     );
