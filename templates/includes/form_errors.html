@@ -1,0 +1,4 @@
+{% comment %}Errores que no pertenecen a un campo concreto.{% endcomment %}
+{% for error in form.non_field_errors %}
+  <div class="alert alert-error"><i class="fas fa-circle-exclamation"></i><div>{{ error }}</div></div>
+{% endfor %}

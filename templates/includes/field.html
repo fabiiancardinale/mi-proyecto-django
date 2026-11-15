@@ -1,0 +1,16 @@
+{% comment %}
+  Campo de formulario con etiqueta, ayuda y errores.
+
+  Uso:
+    {% include "includes/field.html" with field=form.year %}
+    {% include "includes/field.html" with field=form.day opcional=True %}
+    {% include "includes/field.html" with field=form.link ayuda="Texto" clase="span-all" %}
+{% endcomment %}
+<div class="field {{ clase|default:'' }} {% if field.errors %}has-error{% endif %}">
+  <label class="label" for="{{ field.id_for_label }}">
+    {{ field.label }}{% if opcional %} <span class="opt">(opcional)</span>{% endif %}
+  </label>
+  {{ field }}
+  {% if ayuda %}<div class="help">{{ ayuda }}</div>{% endif %}
+  {% for error in field.errors %}<div class="err">{{ error }}</div>{% endfor %}
+</div>

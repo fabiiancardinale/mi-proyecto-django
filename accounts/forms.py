@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
+from django.utils import timezone
 
 from . import months
 from .models import GasConsumption, Profile, User, sumar_meses
@@ -23,6 +24,11 @@ def _aplicar_clase(formulario: forms.BaseForm) -> None:
 # =============================================================================
 # Cuentas
 # =============================================================================
+class LoginForm(forms.Form):
+    username = forms.CharField(label="Usuario")
+    password = forms.CharField(label="Contraseña", widget=forms.PasswordInput)
+
+
 class AdminCreateUserForm(UserCreationForm):
     """Alta de usuario desde el panel."""
 
@@ -35,6 +41,7 @@ class AdminCreateUserForm(UserCreationForm):
     class Meta(UserCreationForm.Meta):
         model = User
         fields = ("username", "email", "role")  # password1/2 los añade la clase base
+        labels = {"username": "Usuario", "email": "Email"}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -43,6 +50,7 @@ class AdminCreateUserForm(UserCreationForm):
         # corto que ya muestra la plantilla.
         for campo in self.fields.values():
             campo.help_text = ""
+        self.fields["password2"].label = "Repetir contraseña"
 
 
 class AdminEditUserForm(forms.ModelForm):
@@ -96,14 +104,14 @@ class ProfileForm(_BaseProfileForm):
         )
         labels = {
             "location": "Ubicación",
-            "external_id": "ID",
+            "external_id": "ID externo",
             "manager_name": "Encargado",
             "phone": "Teléfono",
             "address": "Dirección",
             "link": "Link del equipo (Wecon)",
             "last_maintenance": "Última mantención",
             "next_maintenance": "Próxima mantención",
-            "maintenance_interval_months": "Intervalo mantención (meses)",
+            "maintenance_interval_months": "Intervalo (meses)",
         }
         widgets = {
             "phone": forms.TextInput(attrs={"placeholder": "+56 9 1234 5678"}),
@@ -153,7 +161,7 @@ class ProfilePanelForm(_BaseProfileForm):
         fields = ("location", "external_id", "manager_name", "phone", "address", "link")
         labels = {
             "location": "Ubicación",
-            "external_id": "ID",
+            "external_id": "ID externo",
             "manager_name": "Encargado",
             "phone": "Teléfono",
             "address": "Dirección",
@@ -204,16 +212,17 @@ class GasConsumptionForm(forms.ModelForm):
         fields = ["year", "month_choice", "day", "m3_water", "m3_gas"]
         labels = {"m3_water": "M³ agua", "m3_gas": "M³ gas"}
         widgets = {
-            "year": forms.NumberInput(attrs={"min": 2000, "max": 2100, "placeholder": "2025"}),
+            "year": forms.NumberInput(attrs={"min": 2000, "max": 2100}),
             "m3_water": forms.NumberInput(attrs={"step": "0.01", "min": "0"}),
             "m3_gas": forms.NumberInput(attrs={"step": "0.01", "min": "0"}),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # El modelo declara 'month' con choices, pero aqui lo reemplazamos por
-        # month_choice, asi que 'month' no forma parte del formulario.
-        self.fields["year"].initial = self.fields["year"].initial or None
+        # Por defecto se propone el mes en curso, que es lo que se suele cargar.
+        hoy = timezone.localdate()
+        self.fields["year"].initial = hoy.year
+        self.fields["month_choice"].initial = months.CHOICES[hoy.month - 1][0]
         _aplicar_clase(self)
 
     def clean_year(self) -> int:
@@ -251,5 +260,4 @@ class AdminGasConsumptionForm(GasConsumptionForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["user"].widget.attrs.setdefault("style", "min-width:200px")
         _aplicar_clase(self)

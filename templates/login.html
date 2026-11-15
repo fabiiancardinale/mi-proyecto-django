@@ -1,58 +1,54 @@
-{% load static %}<!doctype html>
-<html lang="es">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Iniciar sesión | EMATEL</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-  <link rel="stylesheet" href="{% static 'theme.css' %}">
-</head>
-<body>
+{% extends "base.html" %}
+{% block title %}Iniciar sesión{% endblock %}
+
+{% block body %}
 <div class="auth">
-  <div class="auth-card">
-    <div class="auth-head">
-      <div class="brand-mark"><i class="fas fa-broadcast-tower"></i></div>
-      <h1>EMATEL</h1>
-      <p>Sistema de monitoreo y gestión de calderas</p>
+  <section class="auth-aside" aria-hidden="true">
+    <span class="brand">
+      <span class="brand-mark"><i class="fas fa-fire-flame-curved"></i></span>
+      <span><strong>EMATEL</strong><small>Monitoreo de calderas</small></span>
+    </span>
+
+    <div class="auth-pitch">
+      <h2>El consumo de tus calderas, claro y al día.</h2>
+      <p>Revisa agua y gas mes a mes, compáralos con el año anterior y adelántate a las mantenciones.</p>
     </div>
 
-    <form method="post" class="auth-body" novalidate>
-      {% csrf_token %}
+    <ul class="auth-points">
+      <li><i class="fas fa-droplet"></i> Consumo de agua y gas por mes</li>
+      <li><i class="fas fa-chart-line"></i> Comparativas contra el año anterior</li>
+      <li><i class="fas fa-screwdriver-wrench"></i> Aviso de próxima mantención</li>
+    </ul>
+  </section>
 
-      {% if form.non_field_errors %}
-        <div class="alert alert-error">
-          <i class="fas fa-circle-exclamation"></i>
-          <div>{{ form.non_field_errors|striptags }}</div>
-        </div>
-      {% endif %}
+  <main class="auth-main">
+    <form method="post" class="auth-form" novalidate>
+      {% csrf_token %}
+      <div>
+        <h1>Iniciar sesión</h1>
+        <p class="sub">Ingresa con el usuario que te entregó EMATEL.</p>
+      </div>
+
+      {% include "includes/form_errors.html" %}
 
       <div class="field {% if form.username.errors %}has-error{% endif %}">
         <label class="label" for="{{ form.username.id_for_label }}">Usuario</label>
-        <input type="text" name="username" id="{{ form.username.id_for_label }}"
-               class="input" autocomplete="username" autofocus required
-               value="{{ form.username.value|default:'' }}">
-        {% if form.username.errors %}<div class="err">{{ form.username.errors|striptags }}</div>{% endif %}
+        <input type="text" name="username" id="{{ form.username.id_for_label }}" class="input"
+               autocomplete="username" autofocus required value="{{ form.username.value|default:'' }}">
+        {% for e in form.username.errors %}<div class="err">{{ e }}</div>{% endfor %}
       </div>
 
       <div class="field {% if form.password.errors %}has-error{% endif %}">
         <label class="label" for="{{ form.password.id_for_label }}">Contraseña</label>
-        <input type="password" name="password" id="{{ form.password.id_for_label }}"
-               class="input" autocomplete="current-password" required>
-        {% if form.password.errors %}<div class="err">{{ form.password.errors|striptags }}</div>{% endif %}
+        <input type="password" name="password" id="{{ form.password.id_for_label }}" class="input"
+               autocomplete="current-password" required>
+        {% for e in form.password.errors %}<div class="err">{{ e }}</div>{% endfor %}
       </div>
 
-      <button type="submit" class="btn btn-primary btn-block" style="margin-top:4px">
-        <i class="fas fa-arrow-right-to-bracket"></i> Iniciar sesión
-      </button>
-    </form>
+      <button type="submit" class="btn btn-primary btn-block">Entrar <i class="fas fa-arrow-right"></i></button>
 
-    <div class="auth-foot">
-      ¿Problemas para entrar? Contacta a tu administrador.
-    </div>
-  </div>
+      <p class="foot">¿Problemas para entrar? Contacta a tu administrador.</p>
+    </form>
+  </main>
 </div>
-</body>
-</html>
+{% endblock %}

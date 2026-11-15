@@ -87,6 +87,47 @@ class RegistrarConsumoTest(TestCase):
         self.assertEqual(GasConsumption.objects.count(), 1)
         self.assertEqual(registro.m3_water, Decimal("120"))
 
+    def test_registrar_gas_despues_no_borra_el_agua(self):
+        services.registrar_consumo(user=self.usuario, year=2025, month="may", m3_water=100)
+        registro, creado = services.registrar_consumo(
+            user=self.usuario, year=2025, month="may", m3_gas=50
+        )
+        self.assertFalse(creado)
+        registro.refresh_from_db()
+        self.assertEqual(registro.m3_water, Decimal("100"))
+        self.assertEqual(registro.m3_gas, Decimal("50"))
+
+    def test_campos_vacios_del_formulario_no_borran_datos(self):
+        # El formulario envía "" en los campos que el usuario deja en blanco.
+        services.registrar_consumo(
+            user=self.usuario, year=2025, month="may", m3_water=100, cost=5000, day=3
+        )
+        registro, _ = services.registrar_consumo(
+            user=self.usuario, year=2025, month="may",
+            m3_water="", m3_gas="40", cost="", day="",
+        )
+        registro.refresh_from_db()
+        self.assertEqual(registro.m3_water, Decimal("100"))
+        self.assertEqual(registro.m3_gas, Decimal("40"))
+        self.assertEqual(registro.cost, Decimal("5000"))
+        self.assertEqual(registro.day, 3)
+
+    def test_un_cero_explicito_si_se_guarda(self):
+        services.registrar_consumo(user=self.usuario, year=2025, month="may", m3_water=100)
+        registro, _ = services.registrar_consumo(
+            user=self.usuario, year=2025, month="may", m3_water=0
+        )
+        registro.refresh_from_db()
+        self.assertEqual(registro.m3_water, Decimal("0"))
+
+    def test_campo_no_informado_queda_vacio_al_crear(self):
+        registro, _ = services.registrar_consumo(
+            user=self.usuario, year=2025, month="may", m3_gas=50
+        )
+        registro.refresh_from_db()
+        self.assertIsNone(registro.m3_water)
+        self.assertIsNone(registro.cost)
+
     def test_normaliza_el_mes_al_guardar(self):
         registro, _ = services.registrar_consumo(
             user=self.usuario, year=2025, month="SEPTIEMBRE", m3_gas=10
@@ -374,6 +415,18 @@ class PanelUsuarioTest(TestCase):
             ).exists()
         )
 
+    def test_el_cliente_no_borra_el_costo_cargado_por_el_admin(self):
+        services.registrar_consumo(
+            user=self.cliente, year=2025, month="may", m3_water=100, cost=8000
+        )
+        self.client.post(reverse("user_dashboard"), {
+            "year": "2025", "month_choice": "may", "m3_water": "", "m3_gas": "50",
+        })
+        registro = GasConsumption.objects.get(user=self.cliente, year=2025, month="may")
+        self.assertEqual(registro.m3_water, Decimal("100"))
+        self.assertEqual(registro.m3_gas, Decimal("50"))
+        self.assertEqual(registro.cost, Decimal("8000"))
+
     def test_rechaza_consumo_sin_agua_ni_gas(self):
         self.client.post(reverse("user_dashboard"), {
             "year": "2025", "month_choice": "may",
@@ -571,3 +624,79 @@ class RutasTest(TestCase):
         })
         self.assertEqual(respuesta.status_code, 200)
         self.assertContains(respuesta, "Credenciales inválidas")
+
+
+class ApiAppMovilTest(TestCase):
+    """Endpoints que consume la app Flutter."""
+
+    def setUp(self):
+        self.cliente = User.objects.create_user("hotel", "h@e.cl", "clave-segura-1", role="user")
+        self.otro = User.objects.create_user("colegio", "c@e.cl", "clave-segura-2", role="user")
+        self.admin = User.objects.create_user("jefe", "j@e.cl", "clave-segura-3", role="admin")
+        perfil = self.cliente.profile
+        perfil.link = "https://example.com/wecon/1"
+        perfil.save()
+
+    def _token(self, usuario, clave):
+        r = self.client.post("/api/auth/token/", {"username": usuario, "password": clave},
+                             content_type="application/json")
+        self.assertEqual(r.status_code, 200)
+        return {"HTTP_AUTHORIZATION": f"Bearer {r.json()['access']}"}
+
+    def test_panel_requiere_token(self):
+        self.assertEqual(self.client.get("/api/panel/").status_code, 401)
+
+    def test_panel_devuelve_resumen_series_e_historial(self):
+        services.registrar_consumo(user=self.cliente, year=2025, month="may", m3_water=100, m3_gas=50, cost=1000)
+        services.registrar_consumo(user=self.cliente, year=2026, month="may", m3_water=120, m3_gas=40)
+        datos = self.client.get("/api/panel/", **self._token("hotel", "clave-segura-1")).json()
+        self.assertEqual(datos["anio"], 2026)
+        self.assertEqual(datos["perfil"]["link"], "https://example.com/wecon/1")
+        self.assertEqual(datos["series"]["2026"]["water"][4], 120.0)
+        self.assertIsNone(datos["series"]["2026"]["water"][0])
+        self.assertAlmostEqual(datos["historial"][0]["pct_water"], 20.0)
+
+    def test_registrar_por_api_y_completar_despues(self):
+        auth = self._token("hotel", "clave-segura-1")
+        r = self.client.post("/api/consumption/", {"year": 2026, "month": "Noviembre", "m3_water": 35},
+                             content_type="application/json", **auth)
+        self.assertEqual(r.status_code, 201)
+        r = self.client.post("/api/consumption/", {"year": 2026, "month": "nov", "m3_gas": "120,5"},
+                             content_type="application/json", **auth)
+        self.assertEqual(r.status_code, 200)
+        registro = GasConsumption.objects.get(user=self.cliente, year=2026, month="nov")
+        self.assertEqual(registro.m3_water, Decimal("35"))
+        self.assertEqual(registro.m3_gas, Decimal("120.5"))
+
+    def test_registrar_valida_los_datos(self):
+        auth = self._token("hotel", "clave-segura-1")
+        r = self.client.post("/api/consumption/", {"year": 2026, "month": "xyz", "m3_gas": 1},
+                             content_type="application/json", **auth)
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("month", r.json()["errores"])
+        r = self.client.post("/api/consumption/", {"year": 2026, "month": "nov"},
+                             content_type="application/json", **auth)
+        self.assertEqual(r.status_code, 400)
+
+    def test_cliente_no_puede_ver_ni_escribir_a_otro(self):
+        auth = self._token("hotel", "clave-segura-1")
+        datos = self.client.get(f"/api/panel/?user_id={self.otro.id}", **auth).json()
+        self.assertEqual(datos["usuario"]["username"], "hotel")
+        self.client.post("/api/consumption/", {"user_id": self.otro.id, "year": 2026, "month": "nov",
+                                               "m3_gas": 9, "cost": 999},
+                         content_type="application/json", **auth)
+        self.assertFalse(GasConsumption.objects.filter(user=self.otro).exists())
+        self.assertIsNone(GasConsumption.objects.get(user=self.cliente).cost)
+        self.assertEqual(self.client.get("/api/clientes/", **auth).status_code, 403)
+
+    def test_admin_lista_clientes_y_registra_por_otro(self):
+        auth = self._token("jefe", "clave-segura-3")
+        nombres = [c["username"] for c in self.client.get("/api/clientes/", **auth).json()]
+        self.assertEqual(nombres, ["colegio", "hotel", "jefe"])
+        r = self.client.post("/api/consumption/", {"user_id": self.otro.id, "year": 2026, "month": "nov",
+                                                   "m3_gas": 9, "cost": 999},
+                             content_type="application/json", **auth)
+        self.assertEqual(r.status_code, 201)
+        self.assertEqual(GasConsumption.objects.get(user=self.otro).cost, Decimal("999"))
+        datos = self.client.get(f"/api/panel/?user_id={self.otro.id}", **auth).json()
+        self.assertEqual(datos["usuario"]["username"], "colegio")

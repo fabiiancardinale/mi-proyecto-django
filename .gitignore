@@ -29,3 +29,7 @@ links_*.csv
 .idea/
 *.swp
 .DS_Store
+
+# Instaladores generados de la app
+*.apk
+*.aab

@@ -5,34 +5,80 @@ monitoreo de los equipos Wecon.
 
 ---
 
-## Puesta en marcha
+## Ver el proyecto en local
 
-```bash
-# 1. Dependencias
+Requiere Python 3.10 o superior. No necesitas MySQL: en local se usa SQLite.
+
+**Windows (PowerShell):**
+
+```powershell
 python -m venv .venv
-source .venv/bin/activate          # Windows: .venv\Scripts\activate
+.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 
-# 2. Configuración
-cp .env.example .env               # y completa los valores reales
+Set-Content -Path .env -Value "DJANGO_DEBUG=True","DJANGO_USAR_SQLITE=True" -Encoding ascii
 
-# 3. Base de datos y estáticos
 python manage.py migrate
-python manage.py collectstatic --noinput
-
-# 4. Servidor
+python manage.py datos_demo
 python manage.py runserver
 ```
 
-> **Importante:** el proyecto ya no funciona sin `.env`. Las credenciales de
-> base de datos y la `SECRET_KEY` salieron del código fuente. Genera una clave
-> nueva con:
->
-> ```bash
-> python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
-> ```
+> Si `Activate.ps1` da un error de "ejecución de scripts deshabilitada", corre
+> una vez `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` y repite.
 
-Para trabajar en local sin MySQL, pon `DJANGO_USAR_SQLITE=True` en tu `.env`.
+**Mac / Linux:**
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+
+printf "DJANGO_DEBUG=True\nDJANGO_USAR_SQLITE=True\n" > .env
+
+python manage.py migrate
+python manage.py datos_demo
+python manage.py runserver
+```
+
+> Si `mysqlclient` falla al instalar, no lo necesitas para trabajar en local.
+> Instala el resto con:
+> `pip install "Django>=5.0,<6.0" djangorestframework djangorestframework-simplejwt django-cors-headers whitenoise reportlab python-dotenv`
+
+Abre <http://127.0.0.1:8000> y entra con alguna de estas cuentas
+(contraseña `demo1234` en todas):
+
+| Usuario   | Qué ves                                                    |
+|-----------|------------------------------------------------------------|
+| `admin`   | Panel de administración: clientes, gráficos y registros    |
+| `hotel`   | Panel de cliente con link de Wecon y dos años de consumo    |
+| `colegio` | Cliente sin link y con la mantención vencida                |
+
+`datos_demo` solo funciona con `DJANGO_DEBUG=True` y se puede correr varias
+veces sin duplicar nada. El admin de Django sigue en `/admin/` (crea un
+superusuario con `python manage.py createsuperuser` si lo necesitas).
+
+### Producción
+
+En el servidor el `.env` se completa a partir de `.env.example`, con
+`DJANGO_DEBUG=False`, la `SECRET_KEY` y las credenciales de MySQL. Genera una
+clave nueva con:
+
+```bash
+python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
+```
+
+---
+
+## App móvil (Flutter)
+
+La carpeta `app_movil/` tiene la app para clientes y administradores. Usa la
+API REST de este proyecto (`/api/panel/`, `/api/consumption/`,
+`/api/clientes/`, con login JWT). Instrucciones en
+[`app_movil/README.md`](app_movil/README.md).
+
+Para probarla contra tu Django local, corre `python manage.py runserver` y en
+la app elige el servidor `http://127.0.0.1:8000` (Windows o Chrome) o
+`http://10.0.2.2:8000` (emulador de Android).
 
 ---
 
@@ -98,29 +144,44 @@ la aplicación no arranca.
 
 ```
 accounts/
-  months.py        Fuente única para interpretar y formatear meses
-  services.py      Lógica de negocio: alta de consumo, series, historial
-  reports.py       Generación de reportes CSV y PDF
-  views.py         Solo manejo HTTP: valida, delega, arma contexto
-  forms.py         Formularios y validación
-  models.py        User, Profile y GasConsumption
-  api_views.py     API REST con JWT
-  management/commands/links_wecon.py    Carga masiva de links
-monitoring/        Modelo Consumption sobre la tabla legacy consumos_calderas
-ematel_site/       Configuración del proyecto
-templates/         Plantillas; todas extienden base.html
-static/theme.css   Sistema de diseño (fuente única de estilos)
+  models.py         User, Profile y GasConsumption
+  forms.py          Formularios y validación (incluido el de login)
+  views.py          Solo manejo HTTP: valida, delega, arma contexto
+  services.py       Lógica de negocio: alta de consumo, series, historial
+  months.py         Fuente única para interpretar y formatear meses
+  reports.py        Reportes CSV y PDF
+  api_views.py      API REST con JWT que usa la app (rutas en api_url.py, bajo /api/)
+  admin.py          Registro en el admin de Django
+  management/commands/
+    links_wecon.py  Carga masiva de links
+    datos_demo.py   Datos de ejemplo para desarrollo
+monitoring/         Tabla legacy consumos_calderas (gráfico global)
+ematel_site/        Configuración del proyecto
+app_movil/          App Flutter (ver su README)
+templates/
+  base.html             Esqueleto HTML común (fuentes, CSS, ui.js)
+  layouts/app.html      Barra lateral + contenido, para páginas con sesión
+  includes/             Piezas reutilizables: campo de formulario,
+                        mensajes, errores, variación porcentual
+  *.html                Una plantilla por página
+static/
+  theme.css         Sistema de diseño: única hoja de estilos
+  js/ui.js          Utilidades comunes: CSRF, modales, pestañas, confirmación
+  js/graficos.js    Configuración y colores comunes de Chart.js
+  js/admin.js       Panel de administración
+  js/usuario.js     Panel del cliente
 ```
-
-Los archivos `static/base.css`, `admin.css`, `user.css`, `login.css` y
-`app.css` quedaron obsoletos y pueden borrarse: todo el estilo vive en
-`theme.css`.
 
 ### Dónde va cada cosa
 
 - **Nueva regla de negocio** → `services.py`, no en la vista.
 - **Nuevo formato de mes que aceptar** → `months.abreviar()`, único lugar.
 - **Validación de un campo** → el formulario correspondiente, no la vista.
+- **Estilos** → `theme.css`. Las plantillas no llevan `style="…"`.
+- **JavaScript** → `static/js/`. Las plantillas no llevan `<script>` en línea;
+  los datos pasan con `{{ valor|json_script:"id" }}` y las URLs con atributos
+  `data-*` generados con `{% url %}`.
+- **Un campo de formulario** → `{% include "includes/field.html" with field=form.x %}`.
 
 Las migraciones repiten a propósito su propia tabla de meses: deben ser
 autocontenidas y seguir funcionando aunque el código de la app cambie.
@@ -133,7 +194,7 @@ autocontenidas y seguir funcionando aunque el código de la app cambie.
 python manage.py test accounts
 ```
 
-65 pruebas que cubren la normalización de meses, el alta de consumo sin
+76 pruebas que cubren la normalización de meses, el alta de consumo sin
 duplicados, los permisos por rol, la edición del link desde la interfaz y la
 generación de reportes.
 
@@ -153,3 +214,8 @@ en minúscula (`ene`..`dic`). Para leer cualquier otro formato usa
 una restricción en la base de datos. Para dar de alta usa
 `services.registrar_consumo()`, que hace `update_or_create` y evita duplicados
 con envíos simultáneos.
+
+Al actualizar un mes existente solo se escriben los campos que vienen con
+valor: registrar el gas de un mes que ya tenía agua conserva el agua, y un
+cliente que corrige su consumo no borra el costo que cargó el administrador.
+Un `0` escrito explícitamente sí se guarda.

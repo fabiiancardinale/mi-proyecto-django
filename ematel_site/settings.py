@@ -1,12 +1,32 @@
-from pathlib import Path
+import io
 import os
+import sys
+from pathlib import Path
 
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Carga las variables desde .env (no versionado). Ver .env.example.
-load_dotenv(BASE_DIR / ".env")
+
+
+def _cargar_env(ruta: Path) -> None:
+    """Carga el archivo .env (no versionado; ver .env.example).
+
+    En Windows, ``echo X=1 > .env`` desde PowerShell guarda el archivo en
+    UTF-16 y python-dotenv falla con UnicodeDecodeError. Aqui se detecta la
+    codificacion por su marca inicial para que funcione igual.
+    """
+    if not ruta.exists():
+        return
+    crudo = ruta.read_bytes()
+    if crudo.startswith((b"\xff\xfe", b"\xfe\xff")):
+        texto = crudo.decode("utf-16")
+    else:
+        texto = crudo.decode("utf-8-sig")
+    load_dotenv(stream=io.StringIO(texto))
+
+
+_cargar_env(BASE_DIR / ".env")
 
 
 def env(clave, defecto=None, *, requerido=False):
@@ -59,17 +79,19 @@ SECURE_REFERRER_POLICY = "same-origin"
 X_FRAME_OPTIONS = "DENY"
 
 INSTALLED_APPS = [
-    "monitoring.apps.MonitoringConfig",
-    "accounts",
-    "django.contrib.humanize",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.contrib.humanize",
+    # Terceros
     "rest_framework",
     "corsheaders",
+    # Proyecto
+    "accounts.apps.AccountsConfig",
+    "monitoring.apps.MonitoringConfig",
 ]
 
 MIDDLEWARE = [
@@ -166,13 +188,18 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
-# STORAGES reemplaza a STATICFILES_STORAGE, obsoleto desde Django 4.2.
+# En produccion los estaticos llevan hash en el nombre (cache infinita), lo que
+# exige correr collectstatic. En desarrollo y en los tests se sirven tal cual:
+# antes los tests fallaban con "Missing staticfiles manifest entry".
+EJECUTANDO_TESTS = len(sys.argv) > 1 and sys.argv[1] == "test"
 STORAGES = {
-    "default": {
-        "BACKEND": "django.core.files.storage.FileSystemStorage",
-    },
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        "BACKEND": (
+            "django.contrib.staticfiles.storage.StaticFilesStorage"
+            if DEBUG or EJECUTANDO_TESTS
+            else "whitenoise.storage.CompressedManifestStaticFilesStorage"
+        ),
     },
 }
 
@@ -205,4 +232,13 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.IsAuthenticated",
     ),
+}
+
+# Duracion de los tokens de la app movil: el access caduca rapido y la app lo
+# renueva sola con el refresh, que dura un mes para no pedir login a diario.
+from datetime import timedelta  # noqa: E402
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=30),
 }

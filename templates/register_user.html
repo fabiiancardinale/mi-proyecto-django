@@ -1,19 +1,15 @@
-{% extends "base.html" %}
-{% block title %}Nuevo usuario | EMATEL{% endblock %}
+{% extends "layouts/app.html" %}
+{% block title %}Nuevo cliente{% endblock %}
 
 {% block content %}
 
-<div class="page-head">
+<header class="page-head">
   <div>
-    <h1><i class="fas fa-user-plus"></i> Nuevo usuario</h1>
-    <p class="sub">Crea la cuenta y configura los datos del sitio del cliente</p>
+    <div class="eyebrow"><a href="{% url 'admin_dashboard' %}"><i class="fas fa-arrow-left"></i> Panel general</a></div>
+    <h1>Nuevo cliente</h1>
+    <p class="sub">Crea la cuenta de acceso y registra los datos del sitio.</p>
   </div>
-  <div class="actions">
-    <a href="{% url 'admin_dashboard' %}" class="btn">
-      <i class="fas fa-arrow-left"></i> Volver al panel
-    </a>
-  </div>
-</div>
+</header>
 
 {% if uform.errors or pform.errors %}
   <div class="alert alert-error">
@@ -22,146 +18,67 @@
   </div>
 {% endif %}
 
-<form method="post" class="stack-5" novalidate>
+<form method="post" class="stack" novalidate>
   {% csrf_token %}
+  {% include "includes/form_errors.html" with form=uform %}
 
-  <!-- =========================== CUENTA =========================== -->
-  <section class="card">
-    <div class="card-head">
-      <div>
-        <h2><i class="fas fa-user-shield"></i> Datos de la cuenta</h2>
-        <p class="sub">Credenciales de acceso y rol dentro del sistema</p>
-      </div>
+  <div class="layout-aside">
+    <div class="stack">
+      <section class="card">
+        <div class="card-head">
+          <div>
+            <h2><i class="fas fa-user-shield"></i> Cuenta</h2>
+            <p class="sub">Credenciales de acceso y rol dentro del sistema</p>
+          </div>
+        </div>
+        <div class="card-body form-grid cols-2">
+          {% include "includes/field.html" with field=uform.username %}
+          {% include "includes/field.html" with field=uform.role %}
+          {% include "includes/field.html" with field=uform.email clase="span-all" %}
+          {% include "includes/field.html" with field=uform.password1 %}
+          {% include "includes/field.html" with field=uform.password2 %}
+          <p class="help span-all">La contraseña debe tener al menos 8 caracteres y no puede ser solo números ni demasiado común.</p>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <div>
+            <h2><i class="fas fa-building"></i> Sitio</h2>
+            <p class="sub">Datos de contacto y del equipo instalado</p>
+          </div>
+        </div>
+        <div class="card-body form-grid cols-2">
+          {% include "includes/field.html" with field=pform.location %}
+          {% include "includes/field.html" with field=pform.external_id %}
+          {% include "includes/field.html" with field=pform.manager_name %}
+          {% include "includes/field.html" with field=pform.phone %}
+          {% include "includes/field.html" with field=pform.address clase="span-all" %}
+          {% include "includes/field.html" with field=pform.link clase="span-all" ayuda="El cliente lo abre con el botón «Ver mi caldera». Puedes agregarlo después." %}
+        </div>
+      </section>
     </div>
-    <div class="card-body">
-      <div class="form-grid" style="align-items:start">
-        <div class="field {% if uform.username.errors %}has-error{% endif %}">
-          <label class="label" for="{{ uform.username.id_for_label }}">Usuario</label>
-          {{ uform.username }}
-          {% if uform.username.errors %}<div class="err">{{ uform.username.errors|striptags }}</div>{% endif %}
-        </div>
 
-        <div class="field {% if uform.email.errors %}has-error{% endif %}">
-          <label class="label" for="{{ uform.email.id_for_label }}">Email</label>
-          {{ uform.email }}
-          {% if uform.email.errors %}<div class="err">{{ uform.email.errors|striptags }}</div>{% endif %}
+    <aside class="stack">
+      <section class="card">
+        <div class="card-head">
+          <div>
+            <h2><i class="fas fa-screwdriver-wrench"></i> Mantenciones</h2>
+            <p class="sub">Si dejas vacía la próxima, se calcula sola</p>
+          </div>
         </div>
+        <div class="card-body stack-sm">
+          {% include "includes/field.html" with field=pform.last_maintenance %}
+          {% include "includes/field.html" with field=pform.maintenance_interval_months %}
+          {% include "includes/field.html" with field=pform.next_maintenance opcional=True %}
+        </div>
+      </section>
 
-        <div class="field {% if uform.role.errors %}has-error{% endif %}">
-          <label class="label" for="{{ uform.role.id_for_label }}">Rol</label>
-          {{ uform.role }}
-          {% if uform.role.errors %}<div class="err">{{ uform.role.errors|striptags }}</div>{% endif %}
-        </div>
-
-        <div class="field {% if uform.password1.errors %}has-error{% endif %}">
-          <label class="label" for="{{ uform.password1.id_for_label }}">Contraseña</label>
-          {{ uform.password1 }}
-          {% if uform.password1.errors %}<div class="err">{{ uform.password1.errors|striptags }}</div>{% endif %}
-          <div class="help">Mínimo 8 caracteres, no puede ser solo numérica ni demasiado común.</div>
-        </div>
-
-        <div class="field {% if uform.password2.errors %}has-error{% endif %}">
-          <label class="label" for="{{ uform.password2.id_for_label }}">Repetir contraseña</label>
-          {{ uform.password2 }}
-          {% if uform.password2.errors %}<div class="err">{{ uform.password2.errors|striptags }}</div>{% endif %}
-        </div>
+      <div class="stack-sm">
+        <button type="submit" class="btn btn-primary btn-block"><i class="fas fa-user-plus"></i> Crear cliente</button>
+        <a href="{% url 'admin_dashboard' %}" class="btn btn-ghost btn-block">Cancelar</a>
       </div>
-    </div>
-  </section>
-
-  <!-- ============================ SITIO ============================ -->
-  <section class="card">
-    <div class="card-head">
-      <div>
-        <h2><i class="fas fa-location-dot"></i> Datos del sitio</h2>
-        <p class="sub">Incluye el link del equipo Wecon que verá el cliente en su panel</p>
-      </div>
-    </div>
-    <div class="card-body">
-      <div class="form-grid" style="align-items:start">
-        <div class="field {% if pform.location.errors %}has-error{% endif %}">
-          <label class="label" for="{{ pform.location.id_for_label }}">Ubicación</label>
-          {{ pform.location }}
-          {% if pform.location.errors %}<div class="err">{{ pform.location.errors|striptags }}</div>{% endif %}
-        </div>
-
-        <div class="field {% if pform.external_id.errors %}has-error{% endif %}">
-          <label class="label" for="{{ pform.external_id.id_for_label }}">ID externo</label>
-          {{ pform.external_id }}
-          {% if pform.external_id.errors %}<div class="err">{{ pform.external_id.errors|striptags }}</div>{% endif %}
-        </div>
-
-        <div class="field {% if pform.manager_name.errors %}has-error{% endif %}">
-          <label class="label" for="{{ pform.manager_name.id_for_label }}">Encargado</label>
-          {{ pform.manager_name }}
-          {% if pform.manager_name.errors %}<div class="err">{{ pform.manager_name.errors|striptags }}</div>{% endif %}
-        </div>
-
-        <div class="field {% if pform.phone.errors %}has-error{% endif %}">
-          <label class="label" for="{{ pform.phone.id_for_label }}">Teléfono</label>
-          {{ pform.phone }}
-          {% if pform.phone.errors %}<div class="err">{{ pform.phone.errors|striptags }}</div>{% endif %}
-        </div>
-      </div>
-
-      <div class="field" style="margin-top:var(--sp-4)">
-        <label class="label" for="{{ pform.address.id_for_label }}">Dirección</label>
-        {{ pform.address }}
-        {% if pform.address.errors %}<div class="err">{{ pform.address.errors|striptags }}</div>{% endif %}
-      </div>
-
-      <div class="field {% if pform.link.errors %}has-error{% endif %}" style="margin-top:var(--sp-4)">
-        <label class="label" for="{{ pform.link.id_for_label }}">
-          <i class="fas fa-link"></i> Link del equipo (Wecon)
-        </label>
-        {{ pform.link }}
-        <div class="help">
-          Enlace de monitoreo que el cliente abrirá con el botón «Ver mi caldera».
-        </div>
-        {% if pform.link.errors %}<div class="err">{{ pform.link.errors|striptags }}</div>{% endif %}
-      </div>
-    </div>
-  </section>
-
-  <!-- ========================= MANTENCIONES ========================= -->
-  <section class="card">
-    <div class="card-head">
-      <div>
-        <h2><i class="fas fa-screwdriver-wrench"></i> Mantenciones</h2>
-        <p class="sub">Si dejas vacía la próxima fecha, se calcula sumando el intervalo</p>
-      </div>
-    </div>
-    <div class="card-body">
-      <div class="form-grid" style="align-items:start">
-        <div class="field {% if pform.last_maintenance.errors %}has-error{% endif %}">
-          <label class="label" for="{{ pform.last_maintenance.id_for_label }}">Última mantención</label>
-          {{ pform.last_maintenance }}
-          {% if pform.last_maintenance.errors %}<div class="err">{{ pform.last_maintenance.errors|striptags }}</div>{% endif %}
-        </div>
-
-        <div class="field {% if pform.next_maintenance.errors %}has-error{% endif %}">
-          <label class="label" for="{{ pform.next_maintenance.id_for_label }}">
-            Próxima mantención <span class="opt">(opcional)</span>
-          </label>
-          {{ pform.next_maintenance }}
-          {% if pform.next_maintenance.errors %}<div class="err">{{ pform.next_maintenance.errors|striptags }}</div>{% endif %}
-        </div>
-
-        <div class="field {% if pform.maintenance_interval_months.errors %}has-error{% endif %}">
-          <label class="label" for="{{ pform.maintenance_interval_months.id_for_label }}">Intervalo (meses)</label>
-          {{ pform.maintenance_interval_months }}
-          {% if pform.maintenance_interval_months.errors %}<div class="err">{{ pform.maintenance_interval_months.errors|striptags }}</div>{% endif %}
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <div class="btn-row" style="justify-content:flex-end">
-    <a href="{% url 'admin_dashboard' %}" class="btn">Cancelar</a>
-    <button type="submit" class="btn btn-primary">
-      <i class="fas fa-user-plus"></i> Crear usuario
-    </button>
+    </aside>
   </div>
 </form>
-
 {% endblock %}

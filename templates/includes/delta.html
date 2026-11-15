@@ -1,0 +1,9 @@
+{% comment %}
+  Variación porcentual contra el año anterior.
+  En consumo, subir es malo (rojo) y bajar es bueno (verde).
+  Uso: {% include "includes/delta.html" with pct=fila.pct_water %}
+{% endcomment %}
+{% if pct is None %}<span class="delta flat">—</span>
+{% elif pct > 0 %}<span class="delta up"><i class="fas fa-arrow-up"></i> {{ pct|floatformat:1 }}%</span>
+{% elif pct < 0 %}<span class="delta down"><i class="fas fa-arrow-down"></i> {{ pct|floatformat:1|cut:"-" }}%</span>
+{% else %}<span class="delta flat">0%</span>{% endif %}

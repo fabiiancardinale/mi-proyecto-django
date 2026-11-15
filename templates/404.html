@@ -1,29 +1,13 @@
-{% load static %}<!doctype html>
-<html lang="es">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Página no encontrada | EMATEL</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-  <link rel="stylesheet" href="{% static 'theme.css' %}">
-</head>
-<body>
-<div class="error-page">
+{% extends "base.html" %}
+{% block title %}Página no encontrada{% endblock %}
+
+{% block body %}
+<main class="error-page">
   <div>
-    <div class="error-code">404</div>
-    <h1 style="margin-top:var(--sp-3)">Página no encontrada</h1>
-    <p class="muted" style="margin-top:var(--sp-2)">
-      La dirección que buscas no existe o fue movida.
-    </p>
-    <div class="btn-row" style="justify-content:center;margin-top:var(--sp-6)">
-      <a href="{% url 'home' %}" class="btn btn-primary">
-        <i class="fas fa-house"></i> Volver al inicio
-      </a>
-    </div>
+    <div class="code">404</div>
+    <h1>Página no encontrada</h1>
+    <p>La dirección que buscas no existe o fue movida.</p>
+    <a href="{% url 'home' %}" class="btn btn-primary"><i class="fas fa-house"></i> Volver al inicio</a>
   </div>
-</div>
-</body>
-</html>
+</main>
+{% endblock %}

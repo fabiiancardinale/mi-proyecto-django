@@ -17,6 +17,7 @@ from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 
 from django.db.models import Avg, Sum
+from django.utils import timezone
 
 from . import months
 from .models import GasConsumption
@@ -30,14 +31,17 @@ class MesInvalido(ValueError):
 # ---------------------------------------------------------------------------
 # Alta y actualizacion de consumo
 # ---------------------------------------------------------------------------
+def _vacio(valor) -> bool:
+    """True si el campo no se completó (None o texto en blanco)."""
+    return valor is None or (isinstance(valor, str) and not valor.strip())
+
+
 def _a_decimal(valor) -> Decimal:
-    """Convierte a Decimal tolerando None, "" y comas decimales."""
-    if valor in (None, ""):
-        return Decimal("0")
+    """Convierte a Decimal tolerando comas decimales. Valores ilegibles = 0."""
     if isinstance(valor, Decimal):
         return valor
     try:
-        return Decimal(str(valor).replace(",", "."))
+        return Decimal(str(valor).strip().replace(",", "."))
     except (InvalidOperation, ValueError):
         return Decimal("0")
 
@@ -56,6 +60,10 @@ def registrar_consumo(
 
     Devuelve ``(registro, fue_creado)``.
 
+    Solo se escriben los campos que vienen con valor: si el mes ya existe y
+    llega únicamente el gas, el agua y el costo guardados se conservan. Un
+    ``0`` explícito sí se guarda; un campo vacío o ``None`` no toca nada.
+
     El mes se normaliza siempre a su abreviatura canonica, asi que da igual si
     llega como "Mayo", "may-24" o 5.
 
@@ -66,17 +74,20 @@ def registrar_consumo(
     if abreviatura is None:
         raise MesInvalido(f"No se reconoce el mes {month!r}.")
 
+    valores = {}
+    for campo, valor in (("m3_water", m3_water), ("m3_gas", m3_gas), ("cost", cost)):
+        if not _vacio(valor):
+            valores[campo] = _a_decimal(valor)
+    if not _vacio(day):
+        valores["day"] = int(day)
+
+    # update_or_create bloquea la fila (select_for_update) y la restriccion
+    # de unicidad evita duplicados con envios simultaneos.
     registro, creado = GasConsumption.objects.update_or_create(
         user=user,
         year=int(year),
         month=abreviatura,
-        defaults={
-            "m3_water": _a_decimal(m3_water),
-            "m3_gas": _a_decimal(m3_gas),
-            "cost": _a_decimal(cost),
-            # El dia se recogia en el formulario pero nunca se guardaba.
-            "day": int(day) if day not in (None, "") else None,
-        },
+        defaults=valores,
     )
     return registro, creado
 
@@ -140,9 +151,42 @@ def datos_comparativa(*, user_id: int | None, anio_actual: int, anio_previo: int
     return {
         "labels": list(months.ETIQUETAS_CORTAS),
         "years": {"prev": anio_previo, "now": anio_actual},
+        # Meses del año actual que ya transcurrieron. El grafico corta la
+        # serie ahi para no dibujar los meses futuros como consumo cero.
+        "hasta_mes": meses_transcurridos(anio_actual),
         "water": {"prev": previo["water"], "now": actual["water"]},
         "gas": {"prev": previo["gas"], "now": actual["gas"]},
     }
+
+
+def meses_transcurridos(year: int) -> int:
+    """Cuantos meses de ``year`` ya empezaron: 12 si es pasado, 0 si es futuro."""
+    hoy = timezone.localdate()
+    if year < hoy.year:
+        return 12
+    if year > hoy.year:
+        return 0
+    return hoy.month
+
+
+def series_por_anio(user) -> dict[int, dict[str, list[float | None]]]:
+    """Todas las series del usuario, agrupadas por año, para el panel.
+
+    A diferencia de :func:`serie_anual`, los meses sin registro van en
+    ``None`` para que el grafico muestre un hueco y no un falso cero.
+    """
+    series: dict[int, dict[str, list[float | None]]] = {}
+    filas = GasConsumption.objects.filter(user=user).values_list(
+        "year", "month", "m3_water", "m3_gas"
+    )
+    for anio, mes, agua, gas in filas:
+        posicion = months.a_posicion(mes)
+        if posicion is None:
+            continue
+        serie = series.setdefault(anio, {"water": [None] * 12, "gas": [None] * 12})
+        serie["water"][posicion] = float(agua) if agua is not None else None
+        serie["gas"][posicion] = float(gas) if gas is not None else None
+    return dict(sorted(series.items(), reverse=True))
 
 
 # ---------------------------------------------------------------------------

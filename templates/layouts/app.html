@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% comment %}
+  Esqueleto de las páginas con sesión iniciada: barra lateral + contenido.
+  Las páginas definen {% block content %} y, si quieren, {% block nav_extra %}
+  para agregar enlaces propios a la barra lateral.
+{% endcomment %}
+
+{% block body %}
+{% with vista=request.resolver_match.url_name %}
+<div class="shell">
+  <aside class="sidebar">
+    <a href="{% url 'home' %}" class="brand">
+      <span class="brand-mark"><i class="fas fa-fire-flame-curved"></i></span>
+      <span><strong>EMATEL</strong><small>Monitoreo de calderas</small></span>
+    </a>
+
+    <nav class="nav" aria-label="Principal">
+      {% if request.user.is_admin or request.user.is_superuser %}
+        <span class="nav-section">Administración</span>
+        <a href="{% url 'admin_dashboard' %}" class="nav-item {% if vista == 'admin_dashboard' %}is-active{% endif %}">
+          <i class="fas fa-gauge-high"></i><span>Panel</span>
+        </a>
+        <a href="{% url 'create_user' %}" class="nav-item {% if vista == 'create_user' %}is-active{% endif %}">
+          <i class="fas fa-user-plus"></i><span>Nuevo cliente</span>
+        </a>
+      {% endif %}
+      {% block nav_extra %}{% endblock %}
+      <span class="nav-section">Mi cuenta</span>
+      <a href="{% url 'user_dashboard' %}" class="nav-item {% if vista == 'user_dashboard' %}is-active{% endif %}">
+        <i class="fas fa-chart-column"></i><span>Mi consumo</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-foot">
+      <div class="user-card">
+        <span class="avatar">{{ request.user.username|slice:":1"|upper }}</span>
+        <span class="who">
+          <strong>{{ request.user.username }}</strong>
+          <span>{{ request.user.get_role_display }}</span>
+        </span>
+        <a href="{% url 'logout' %}" class="logout" title="Cerrar sesión" aria-label="Cerrar sesión">
+          <i class="fas fa-arrow-right-from-bracket"></i>
+        </a>
+      </div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <main class="main-inner">
+      {% include "includes/messages.html" %}
+      {% block content %}{% endblock %}
+    </main>
+    <footer class="main-foot">© {% now "Y" %} EMATEL · Sistema de gestión de consumo</footer>
+  </div>
+</div>
+{% endwith %}
+{% endblock %}

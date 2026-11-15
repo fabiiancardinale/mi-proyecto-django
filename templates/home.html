@@ -1,22 +1,17 @@
 {% extends "base.html" %}
-{% block title %}Inicio | EMATEL{% endblock %}
+{% comment %}
+  Solo la ven quienes no iniciaron sesión, y la vista de inicio los lleva al
+  panel que corresponde si ya la tienen. Se mantiene como portada simple.
+{% endcomment %}
+{% block title %}Inicio{% endblock %}
 
-{% block content %}
-<div class="card">
-  <div class="card-body center" style="padding:var(--sp-10) var(--sp-6)">
-    <div class="brand-mark" style="width:56px;height:56px;margin:0 auto var(--sp-5);font-size:22px;border-radius:var(--r-lg)">
-      <i class="fas fa-broadcast-tower"></i>
-    </div>
+{% block body %}
+<main class="error-page">
+  <div>
+    <span class="brand-mark xl"><i class="fas fa-fire-flame-curved"></i></span>
     <h1>Sistema de monitoreo EMATEL</h1>
-    <p class="muted" style="margin-top:var(--sp-3);max-width:520px;margin-inline:auto">
-      Consulta el consumo de agua y gas de tus calderas, revisa comparativas históricas
-      y descarga reportes.
-    </p>
-    <div class="btn-row" style="justify-content:center;margin-top:var(--sp-6)">
-      <a href="{% url 'login' %}" class="btn btn-primary">
-        <i class="fas fa-arrow-right-to-bracket"></i> Iniciar sesión
-      </a>
-    </div>
+    <p>Consulta el consumo de agua y gas de tus calderas y descarga tus reportes.</p>
+    <a href="{% url 'login' %}" class="btn btn-primary">Iniciar sesión <i class="fas fa-arrow-right"></i></a>
   </div>
-</div>
+</main>
 {% endblock %}

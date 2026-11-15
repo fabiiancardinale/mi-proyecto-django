@@ -1,0 +1,15 @@
+{% if messages %}
+<div class="messages" role="status">
+  {% for m in messages %}
+    {% if m.level_tag == "success" %}
+      <div class="alert alert-success"><i class="fas fa-circle-check"></i><div>{{ m }}</div></div>
+    {% elif m.level_tag == "error" %}
+      <div class="alert alert-error"><i class="fas fa-circle-exclamation"></i><div>{{ m }}</div></div>
+    {% elif m.level_tag == "warning" %}
+      <div class="alert alert-warning"><i class="fas fa-triangle-exclamation"></i><div>{{ m }}</div></div>
+    {% else %}
+      <div class="alert alert-info"><i class="fas fa-circle-info"></i><div>{{ m }}</div></div>
+    {% endif %}
+  {% endfor %}
+</div>
+{% endif %}

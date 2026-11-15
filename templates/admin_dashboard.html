@@ -1,863 +1,403 @@
-{% extends "base.html" %}
-{% load humanize %}
+{% extends "layouts/app.html" %}
+{% load static %}
 
-{% block title %}Administración | EMATEL{% endblock %}
-{% block body_layout %}has-sidebar{% endblock %}
+{% block title %}Administración{% endblock %}
 
-{% block sidebar %}
-<aside class="app-sidebar">
-  <span class="side-label">Panel</span>
-  <a class="side-link is-active" href="#usuarios">
-    <i class="fas fa-users"></i><span>Usuarios</span><span class="count">{{ total_users }}</span>
-  </a>
-  <a class="side-link" href="#comparativas">
-    <i class="fas fa-chart-line"></i><span>Comparativas</span>
-  </a>
-  <a class="side-link" href="#consumo">
-    <i class="fas fa-database"></i><span>Consumo</span>
-  </a>
-  <div class="side-foot"><span class="dot on"></span> Sistema operativo</div>
-</aside>
+{% block nav_extra %}
+  <a href="#clientes" class="nav-item"><i class="fas fa-users"></i><span>Clientes</span><span class="count">{{ conteo.total }}</span></a>
+  <a href="#consumo" class="nav-item"><i class="fas fa-chart-line"></i><span>Consumo</span></a>
 {% endblock %}
 
 {% block content %}
 
-<div class="page-head">
+<header class="page-head">
   <div>
-    <h1><i class="fas fa-shield-halved"></i> Panel de administración</h1>
-    <p class="sub">Gestiona usuarios, links de equipos y registros de consumo</p>
+    <div class="eyebrow"><i class="fas fa-shield-halved"></i> Administración</div>
+    <h1>Panel general</h1>
+    <p class="sub">Clientes, links de equipos Wecon y registros de consumo.</p>
   </div>
   <div class="actions">
-    <a href="{% url 'create_user' %}" class="btn btn-primary">
-      <i class="fas fa-plus"></i> Nuevo usuario
-    </a>
+    <a href="{% url 'create_user' %}" class="btn btn-primary"><i class="fas fa-user-plus"></i> Nuevo cliente</a>
   </div>
-</div>
+</header>
 
-<!-- ============================ INDICADORES ============================ -->
-<section class="stat-grid">
-  <div class="stat">
-    <div class="stat-icon is-ok"><i class="fas fa-user-check"></i></div>
-    <div>
-      <div class="stat-value">{{ total_activos }}</div>
-      <div class="stat-label">Usuarios activos</div>
-    </div>
-  </div>
-  <div class="stat">
-    <div class="stat-icon is-muted"><i class="fas fa-user-slash"></i></div>
-    <div>
-      <div class="stat-value">{{ total_inactivos }}</div>
-      <div class="stat-label">Usuarios inactivos</div>
-    </div>
-  </div>
-  <div class="stat">
-    <div class="stat-icon"><i class="fas fa-users"></i></div>
-    <div>
-      <div class="stat-value">{{ total_users }}</div>
-      <div class="stat-label">Total registrados</div>
-    </div>
-  </div>
-  <div class="stat">
-    <div class="stat-icon is-warn"><i class="fas fa-link"></i></div>
-    <div>
-      <div class="stat-value">{{ total_sin_link }}</div>
-      <div class="stat-label">Sin link configurado</div>
-    </div>
-  </div>
+<!-- ============================ Indicadores ============================ -->
+<section class="kpi-grid" aria-label="Indicadores">
+  <article class="kpi">
+    <div class="kpi-top"><span class="kpi-icon info"><i class="fas fa-users"></i></span> Usuarios registrados</div>
+    <div class="kpi-value">{{ conteo.total }}</div>
+    <div class="kpi-sub">Clientes y administradores</div>
+  </article>
+  <article class="kpi">
+    <div class="kpi-top"><span class="kpi-icon ok"><i class="fas fa-user-check"></i></span> Activos</div>
+    <div class="kpi-value">{{ conteo.activos }}</div>
+    <div class="kpi-sub">Pueden iniciar sesión</div>
+  </article>
+  <article class="kpi">
+    <div class="kpi-top"><span class="kpi-icon"><i class="fas fa-user-slash"></i></span> Inactivos</div>
+    <div class="kpi-value">{{ conteo.inactivos }}</div>
+    <div class="kpi-sub">Acceso bloqueado</div>
+  </article>
+  <article class="kpi">
+    <div class="kpi-top"><span class="kpi-icon {% if conteo.sin_link %}warn{% else %}ok{% endif %}"><i class="fas fa-link-slash"></i></span> Sin link Wecon</div>
+    <div class="kpi-value">{{ conteo.sin_link }}</div>
+    <div class="kpi-sub">{% if conteo.sin_link %}Pendientes de configurar{% else %}Todos configurados{% endif %}</div>
+  </article>
 </section>
 
-<!-- ============================= USUARIOS ============================= -->
-<section id="usuarios" class="section card">
+<!-- ============================== Clientes ============================== -->
+<section id="clientes" class="section card">
   <div class="card-head">
     <div>
-      <h2><i class="fas fa-users-gear"></i> Gestión de usuarios</h2>
-      <p class="sub">Edita datos, estado y el link del equipo Wecon de cada cliente</p>
-    </div>
-    <div class="actions">
-      <a href="{% url 'create_user' %}" class="btn btn-sm">
-        <i class="fas fa-plus"></i> Nuevo
-      </a>
+      <h2><i class="fas fa-users"></i> Clientes</h2>
+      <p class="sub">Edita datos, estado y el link del equipo de cada cliente</p>
     </div>
   </div>
 
-  <form method="get" class="filters">
-    <div class="search-box">
+  <form method="get" class="toolbar" action="#clientes">
+    <div class="search">
       <i class="fas fa-magnifying-glass"></i>
-      <input type="text" name="q" class="input" value="{{ q }}" placeholder="Buscar por usuario o email…">
+      <input type="search" name="q" class="input" value="{{ q }}" placeholder="Buscar por usuario o email…" aria-label="Buscar">
     </div>
-
-    <select name="role" class="input" style="flex:0 0 170px">
-      <option value="">Rol: todos</option>
+    <select name="role" class="input" aria-label="Rol">
+      <option value="">Todos los roles</option>
       <option value="admin" {% if role_filter == "admin" %}selected{% endif %}>Administrador</option>
-      <option value="user"  {% if role_filter == "user" %}selected{% endif %}>Usuario</option>
+      <option value="user" {% if role_filter == "user" %}selected{% endif %}>Usuario</option>
     </select>
-
-    <select name="status" class="input" style="flex:0 0 170px">
-      <option value="">Estado: todos</option>
-      <option value="activos"   {% if status_filter == "activos" %}selected{% endif %}>Activos</option>
+    <select name="status" class="input" aria-label="Estado">
+      <option value="">Todos los estados</option>
+      <option value="activos" {% if status_filter == "activos" %}selected{% endif %}>Activos</option>
       <option value="inactivos" {% if status_filter == "inactivos" %}selected{% endif %}>Inactivos</option>
     </select>
-
+    {% if selected_user_id %}<input type="hidden" name="selected_user" value="{{ selected_user_id }}">{% endif %}
     <button class="btn" type="submit"><i class="fas fa-filter"></i> Filtrar</button>
     {% if q or role_filter or status_filter %}
       <a class="btn btn-ghost" href="{% url 'admin_dashboard' %}"><i class="fas fa-xmark"></i> Limpiar</a>
     {% endif %}
   </form>
 
-  <div class="table-scroll">
+  <div class="table-wrap">
     <table class="table">
       <thead>
         <tr>
-          <th>ID</th>
-          <th>Usuario</th>
-          <th>Email</th>
+          <th>Cliente</th>
+          <th>Sitio</th>
           <th>Rol</th>
           <th>Estado</th>
-          <th>Link del equipo</th>
+          <th>Equipo Wecon</th>
           <th>Último acceso</th>
-          <th class="shrink">Acciones</th>
+          <th class="shrink"><span class="sr-only">Acciones</span></th>
         </tr>
       </thead>
       <tbody>
         {% for u in page_obj %}
           <tr>
-            <td><span class="chip-id mono">#{{ u.id|stringformat:"03d" }}</span></td>
             <td>
-              <div class="user-cell">
-                <span class="avatar-sm">{{ u.username|slice:":1"|upper }}</span>
+              <div class="cell-user">
+                <span class="avatar">{{ u.username|slice:":1"|upper }}</span>
                 <div>
-                  <div class="strong">{{ u.username }}</div>
-                  <div class="tiny muted">Desde {{ u.date_joined|date:"d/m/Y" }}</div>
+                  <div class="name">{{ u.username }}</div>
+                  <div class="meta">{{ u.email|default:"Sin email" }}</div>
                 </div>
               </div>
             </td>
-            <td>{{ u.email|default:"—" }}</td>
             <td>
-              {% if u.role == "admin" %}
-                <span class="badge badge-danger">Administrador</span>
-              {% else %}
-                <span class="badge badge-info">Usuario</span>
-              {% endif %}
+              <div>{{ u.profile.location|default:"—" }}</div>
+              {% if u.profile.external_id %}<div class="small muted mono">{{ u.profile.external_id }}</div>{% endif %}
             </td>
             <td>
-              {% if u.is_active %}
-                <span class="badge badge-ok"><i class="fas fa-circle" style="font-size:6px"></i> Activo</span>
-              {% else %}
-                <span class="badge badge-muted"><i class="fas fa-circle" style="font-size:6px"></i> Inactivo</span>
-              {% endif %}
+              {% if u.role == "admin" %}<span class="badge badge-dark">Administrador</span>
+              {% else %}<span class="badge">Usuario</span>{% endif %}
+            </td>
+            <td>
+              {% if u.is_active %}<span class="badge badge-ok"><span class="dot"></span> Activo</span>
+              {% else %}<span class="badge"><span class="dot"></span> Inactivo</span>{% endif %}
             </td>
             <td>
               {% if u.profile.link %}
-                <a href="{{ u.profile.link }}" target="_blank" rel="noopener noreferrer"
-                   class="badge badge-info" title="{{ u.profile.link }}">
-                  <i class="fas fa-arrow-up-right-from-square"></i> Configurado
+                <a href="{{ u.profile.link }}" target="_blank" rel="noopener noreferrer" class="badge badge-info" title="{{ u.profile.link }}">
+                  <i class="fas fa-arrow-up-right-from-square"></i> Abrir
                 </a>
               {% else %}
-                <span class="badge badge-warn" title="Este cliente no tiene link de Wecon">
-                  <i class="fas fa-triangle-exclamation"></i> Sin link
-                </span>
+                <span class="badge badge-warn"><i class="fas fa-triangle-exclamation"></i> Sin link</span>
               {% endif %}
             </td>
             <td>
               {% if u.last_login %}
-                <div>{{ u.last_login|date:"d/m/Y H:i" }}</div>
-                <div class="tiny muted">Hace {{ u.last_login|timesince }}</div>
-              {% else %}
-                <span class="muted">Sin registro</span>
-              {% endif %}
+                <div>{{ u.last_login|date:"d/m/Y" }}</div>
+                <div class="small muted">hace {{ u.last_login|timesince }}</div>
+              {% else %}<span class="muted">Nunca</span>{% endif %}
             </td>
             <td class="shrink">
               <div class="row-actions">
-                <button type="button" class="btn btn-sm btn-ghost btn-icon js-ver" title="Ver detalle"
-                  data-id="{{ u.id }}"
-                  data-username="{{ u.username }}"
-                  data-email="{{ u.email|default:'' }}"
-                  data-rol="{{ u.get_role_display }}"
-                  data-rolcodigo="{{ u.role }}"
-                  data-activo="{% if u.is_active %}1{% else %}0{% endif %}"
-                  data-creado="{{ u.date_joined|date:'d/m/Y H:i' }}"
-                  data-ultacceso="{% if u.last_login %}{{ u.last_login|date:'d/m/Y H:i' }}{% else %}—{% endif %}"
-                  data-ubicacion="{{ u.profile.location|default:'' }}"
-                  data-idexterno="{{ u.profile.external_id|default:'' }}"
-                  data-encargado="{{ u.profile.manager_name|default:'' }}"
-                  data-telefono="{{ u.profile.phone|default:'' }}"
-                  data-direccion="{{ u.profile.address|default:'' }}"
-                  data-link="{{ u.profile.link|default:'' }}"
-                  data-ultmant="{% if u.profile.last_maintenance %}{{ u.profile.last_maintenance|date:'d/m/Y' }}{% else %}—{% endif %}"
-                  data-proxmant="{% if u.profile.next_maintenance %}{{ u.profile.next_maintenance|date:'d/m/Y' }}{% else %}—{% endif %}"
-                  data-intervalo="{{ u.profile.maintenance_interval_months|default:'—' }}">
-                  <i class="fas fa-eye"></i>
-                </button>
-
-                <button type="button" class="btn btn-sm btn-ghost btn-icon js-editar" title="Editar"
-                  data-id="{{ u.id }}"
-                  data-username="{{ u.username }}"
-                  data-email="{{ u.email|default:'' }}"
-                  data-rolcodigo="{{ u.role }}"
-                  data-activo="{% if u.is_active %}1{% else %}0{% endif %}"
-                  data-ubicacion="{{ u.profile.location|default:'' }}"
-                  data-idexterno="{{ u.profile.external_id|default:'' }}"
-                  data-encargado="{{ u.profile.manager_name|default:'' }}"
-                  data-telefono="{{ u.profile.phone|default:'' }}"
-                  data-direccion="{{ u.profile.address|default:'' }}"
-                  data-link="{{ u.profile.link|default:'' }}">
-                  <i class="fas fa-pen"></i>
-                </button>
-
+                <a class="btn btn-sm btn-icon btn-ghost" title="Ver consumo"
+                   href="?{{ filtros_qs }}selected_user={{ u.id }}#consumo"><i class="fas fa-chart-column"></i></a>
+                <button type="button" class="btn btn-sm btn-icon btn-ghost js-ver" data-id="{{ u.id }}" title="Ver detalle"><i class="fas fa-eye"></i></button>
+                <button type="button" class="btn btn-sm btn-icon btn-ghost js-editar" data-id="{{ u.id }}" title="Editar"><i class="fas fa-pen"></i></button>
                 <form action="{% url 'usuario_eliminar' pk=u.id %}" method="post"
-                      onsubmit="return confirm('¿Eliminar al usuario {{ u.username|escapejs }}? Esta acción no se puede deshacer.');">
+                      data-confirmar="¿Eliminar a {{ u.username }}? Se borrarán también sus registros de consumo. Esta acción no se puede deshacer.">
                   {% csrf_token %}
-                  <button class="btn btn-sm btn-danger btn-icon" title="Eliminar">
-                    <i class="fas fa-trash"></i>
-                  </button>
+                  <button class="btn btn-sm btn-icon btn-danger-ghost" title="Eliminar"><i class="fas fa-trash"></i></button>
                 </form>
               </div>
             </td>
           </tr>
         {% empty %}
-          <tr>
-            <td colspan="8" class="empty">
-              <i class="fas fa-users-slash"></i>
-              No se encontraron usuarios con esos criterios.
-            </td>
-          </tr>
+          <tr><td colspan="7" class="empty"><i class="fas fa-users-slash"></i>No se encontraron usuarios con esos criterios.</td></tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
 
-  {% if page_obj.paginator.num_pages > 1 %}
-  <div class="pager">
-    <div class="info">
-      Mostrando {{ page_obj.start_index }}–{{ page_obj.end_index }} de {{ paginator.count }} usuarios
-    </div>
+  {% if paginator.num_pages > 1 %}
+  <nav class="pager" aria-label="Paginación">
+    <span>{{ page_obj.start_index }}–{{ page_obj.end_index }} de {{ paginator.count }}</span>
     <div class="pages">
       {% if page_obj.has_previous %}
-        <a class="btn btn-sm page" href="?{{ filtros_qs }}page={{ page_obj.previous_page_number }}">
-          <i class="fas fa-chevron-left"></i>
-        </a>
+        <a class="btn btn-sm btn-icon" href="?{{ filtros_qs }}page={{ page_obj.previous_page_number }}#clientes" aria-label="Anterior"><i class="fas fa-chevron-left"></i></a>
       {% else %}
-        <span class="btn btn-sm page is-disabled"><i class="fas fa-chevron-left"></i></span>
+        <span class="btn btn-sm btn-icon is-disabled"><i class="fas fa-chevron-left"></i></span>
       {% endif %}
-
-      {% for num in page_obj.paginator.page_range %}
+      {% for num in paginator.page_range %}
         {% if num == page_obj.number %}
-          <span class="btn btn-sm page is-active">{{ num }}</span>
-        {% elif num == 1 or num == page_obj.paginator.num_pages or num >= page_obj.number|add:"-1" and num <= page_obj.number|add:"1" %}
-          <a class="btn btn-sm page" href="?{{ filtros_qs }}page={{ num }}">{{ num }}</a>
+          <span class="btn btn-sm btn-icon is-active" aria-current="page">{{ num }}</span>
+        {% elif num == 1 or num == paginator.num_pages or num >= page_obj.number|add:"-1" and num <= page_obj.number|add:"1" %}
+          <a class="btn btn-sm btn-icon" href="?{{ filtros_qs }}page={{ num }}#clientes">{{ num }}</a>
         {% elif num == page_obj.number|add:"-2" or num == page_obj.number|add:"2" %}
-          <span class="dots">…</span>
+          <span class="muted">…</span>
         {% endif %}
       {% endfor %}
-
       {% if page_obj.has_next %}
-        <a class="btn btn-sm page" href="?{{ filtros_qs }}page={{ page_obj.next_page_number }}">
-          <i class="fas fa-chevron-right"></i>
-        </a>
+        <a class="btn btn-sm btn-icon" href="?{{ filtros_qs }}page={{ page_obj.next_page_number }}#clientes" aria-label="Siguiente"><i class="fas fa-chevron-right"></i></a>
       {% else %}
-        <span class="btn btn-sm page is-disabled"><i class="fas fa-chevron-right"></i></span>
+        <span class="btn btn-sm btn-icon is-disabled"><i class="fas fa-chevron-right"></i></span>
       {% endif %}
     </div>
-  </div>
+  </nav>
   {% endif %}
 </section>
 
-<!-- =========================== COMPARATIVAS =========================== -->
-<section id="comparativas" class="section card">
+<!-- =============================== Consumo =============================== -->
+<section id="consumo" class="section card">
   <div class="card-head">
     <div>
-      <h2><i class="fas fa-chart-line"></i> Comparativa {{ chart_data.years.prev }} vs {{ chart_data.years.now }}</h2>
-      <p class="sub">Filtra por usuario o revisa el consumo global</p>
+      <h2><i class="fas fa-chart-line"></i>
+        Consumo {{ chart_data.years.prev }} vs {{ chart_data.years.now }}
+      </h2>
+      <p class="sub">
+        {% if selected_user %}Cliente <strong>{{ selected_user.username }}</strong>
+        {% else %}Todos los clientes · tabla de calderas{% endif %}
+      </p>
     </div>
-    <div class="actions">
-      <select id="filtroUsuario" class="input" style="min-width:220px">
-        <option value="">Todos los usuarios</option>
+    <form method="get" action="#consumo" class="row" id="formCliente">
+      {% for clave, valor in request.GET.items %}
+        {% if clave != "selected_user" %}<input type="hidden" name="{{ clave }}" value="{{ valor }}">{% endif %}
+      {% endfor %}
+      <label class="sr-only" for="filtroUsuario">Cliente</label>
+      <select id="filtroUsuario" name="selected_user" class="input">
+        <option value="">Todos los clientes</option>
         {% for u in users_for_filter %}
-          <option value="{{ u.id }}" {% if selected_user_id == u.id|stringformat:"s" %}selected{% endif %}>
-            {{ u.username }}
-          </option>
+          <option value="{{ u.id }}" {% if selected_user.id == u.id %}selected{% endif %}>{{ u.username }}</option>
         {% endfor %}
       </select>
-      <span id="cargandoGraficos" class="muted small hidden">
-        <i class="fas fa-spinner fa-spin"></i> Cargando…
-      </span>
-    </div>
+      <noscript><button class="btn" type="submit">Ver</button></noscript>
+    </form>
   </div>
 
   <div class="card-body">
     <div class="chart-grid">
       <div>
-        <h4 class="row" style="margin-bottom:12px">
-          <i class="fas fa-droplet" style="color:var(--accent-600)"></i> Consumo de agua (m³/mes)
-        </h4>
-        <div class="chart-box"><canvas id="graficoAgua"></canvas></div>
+        <div class="chart-title"><h3><i class="fas fa-droplet water"></i> Agua (m³)</h3><span class="total" id="totalAgua"></span></div>
+        <div class="chart-box"><canvas id="graficoAgua" aria-label="Gráfico de consumo de agua"></canvas></div>
       </div>
       <div>
-        <h4 class="row" style="margin-bottom:12px">
-          <i class="fas fa-fire-flame-simple" style="color:var(--warn-600)"></i> Consumo de gas (m³/mes)
-        </h4>
-        <div class="chart-box"><canvas id="graficoGas"></canvas></div>
+        <div class="chart-title"><h3><i class="fas fa-fire-flame-simple gas"></i> Gas (m³)</h3><span class="total" id="totalGas"></span></div>
+        <div class="chart-box"><canvas id="graficoGas" aria-label="Gráfico de consumo de gas"></canvas></div>
       </div>
     </div>
   </div>
-
-  {{ chart_data|json_script:"datos-graficos" }}
 </section>
 
-<!-- ============================= CONSUMO ============================= -->
-<section id="consumo" class="section card">
-  <div class="card-head">
-    <div>
-      <h2><i class="fas fa-database"></i> Registrar consumo</h2>
-      <p class="sub">Si el mes ya existe para ese usuario, se actualiza en vez de duplicarse</p>
+<div class="layout-split">
+  <section class="card">
+    <div class="card-head">
+      <div>
+        <h2><i class="fas fa-plus"></i> Registrar consumo</h2>
+        <p class="sub">Si el mes ya existe, solo cambian los campos que completes</p>
+      </div>
     </div>
-  </div>
-
-  <div class="card-body">
-    <form method="post" class="form-grid">
+    <form method="post" class="card-body stack-sm" novalidate>
       {% csrf_token %}
-      <div class="field {% if admin_form.user.errors %}has-error{% endif %}">
-        <label class="label" for="{{ admin_form.user.id_for_label }}">Usuario</label>
-        {{ admin_form.user }}
-        {% if admin_form.user.errors %}<div class="err">{{ admin_form.user.errors|striptags }}</div>{% endif %}
+      {% include "includes/form_errors.html" with form=admin_form %}
+      <div class="form-grid cols-2">
+        {% include "includes/field.html" with field=admin_form.user clase="span-all" %}
+        {% include "includes/field.html" with field=admin_form.month_choice %}
+        {% include "includes/field.html" with field=admin_form.year %}
+        {% include "includes/field.html" with field=admin_form.m3_water %}
+        {% include "includes/field.html" with field=admin_form.m3_gas %}
+        {% include "includes/field.html" with field=admin_form.cost %}
+        {% include "includes/field.html" with field=admin_form.day opcional=True %}
       </div>
-      <div class="field {% if admin_form.year.errors %}has-error{% endif %}">
-        <label class="label" for="{{ admin_form.year.id_for_label }}">Año</label>
-        {{ admin_form.year }}
-        {% if admin_form.year.errors %}<div class="err">{{ admin_form.year.errors|striptags }}</div>{% endif %}
-      </div>
-      <div class="field {% if admin_form.month_choice.errors %}has-error{% endif %}">
-        <label class="label" for="{{ admin_form.month_choice.id_for_label }}">Mes</label>
-        {{ admin_form.month_choice }}
-        {% if admin_form.month_choice.errors %}<div class="err">{{ admin_form.month_choice.errors|striptags }}</div>{% endif %}
-      </div>
-      <div class="field {% if admin_form.day.errors %}has-error{% endif %}">
-        <label class="label" for="{{ admin_form.day.id_for_label }}">Día <span class="opt">(opcional)</span></label>
-        {{ admin_form.day }}
-        {% if admin_form.day.errors %}<div class="err">{{ admin_form.day.errors|striptags }}</div>{% endif %}
-      </div>
-      <div class="field {% if admin_form.m3_water.errors %}has-error{% endif %}">
-        <label class="label" for="{{ admin_form.m3_water.id_for_label }}">M³ agua</label>
-        {{ admin_form.m3_water }}
-        {% if admin_form.m3_water.errors %}<div class="err">{{ admin_form.m3_water.errors|striptags }}</div>{% endif %}
-      </div>
-      <div class="field {% if admin_form.m3_gas.errors %}has-error{% endif %}">
-        <label class="label" for="{{ admin_form.m3_gas.id_for_label }}">M³ gas</label>
-        {{ admin_form.m3_gas }}
-        {% if admin_form.m3_gas.errors %}<div class="err">{{ admin_form.m3_gas.errors|striptags }}</div>{% endif %}
-      </div>
-      {% if admin_form.fields.cost %}
-      <div class="field {% if admin_form.cost.errors %}has-error{% endif %}">
-        <label class="label" for="{{ admin_form.cost.id_for_label }}">Costo (CLP)</label>
-        {{ admin_form.cost }}
-        {% if admin_form.cost.errors %}<div class="err">{{ admin_form.cost.errors|striptags }}</div>{% endif %}
-      </div>
-      {% endif %}
-      <div class="self-end">
-        <button type="submit" class="btn btn-primary btn-block">
-          <i class="fas fa-floppy-disk"></i> Guardar
-        </button>
-      </div>
+      <button type="submit" class="btn btn-primary btn-block"><i class="fas fa-floppy-disk"></i> Guardar registro</button>
     </form>
-  </div>
+  </section>
 
-  <div class="card-head" style="border-top:1px solid var(--line-soft)">
-    <div>
-      <h3><i class="fas fa-table-list"></i> Registros
-        {% if selected_user_id %}del usuario seleccionado{% else %}(elige un usuario){% endif %}
-      </h3>
+  <section class="card">
+    <div class="card-head">
+      <div>
+        <h2><i class="fas fa-table-list"></i> Registros</h2>
+        <p class="sub">{% if selected_user %}de {{ selected_user.username }}{% else %}Elige un cliente para ver sus registros{% endif %}</p>
+      </div>
+      {% if years_in_rows|length > 1 %}
+        <div class="tabs" data-tabs="registros" role="tablist">
+          {% for y in years_in_rows %}
+            <button type="button" class="tab {% if forloop.first %}is-active{% endif %}" data-valor="{{ y }}">{{ y }}</button>
+          {% endfor %}
+          <button type="button" class="tab" data-valor="">Todo</button>
+        </div>
+      {% endif %}
     </div>
+
     {% if totals.total_water or totals.total_gas or totals.total_cost %}
-    <div class="pill-row">
-      <span class="pill"><i class="fas fa-droplet"></i> Agua {{ year_now_tbl }}: <strong>{{ totals.total_water|default:"—"|floatformat:2 }} m³</strong></span>
-      <span class="pill"><i class="fas fa-fire-flame-simple"></i> Gas {{ year_now_tbl }}: <strong>{{ totals.total_gas|default:"—"|floatformat:2 }} m³</strong></span>
-      <span class="pill"><i class="fas fa-sack-dollar"></i> Costo: <strong>{% if totals.total_cost %}${{ totals.total_cost|floatformat:0|intcomma }}{% else %}—{% endif %}</strong></span>
-    </div>
+      <div class="card-body tight row">
+        <span class="chip"><i class="fas fa-droplet water"></i> Agua {{ year_now_tbl }} <strong>{{ totals.total_water|floatformat:"1g"|default:"—" }} m³</strong></span>
+        <span class="chip"><i class="fas fa-fire-flame-simple gas"></i> Gas {{ year_now_tbl }} <strong>{{ totals.total_gas|floatformat:"1g"|default:"—" }} m³</strong></span>
+        <span class="chip"><i class="fas fa-sack-dollar cost"></i> Costo <strong>{% if totals.total_cost %}${{ totals.total_cost|floatformat:"0g" }}{% else %}—{% endif %}</strong></span>
+      </div>
     {% endif %}
-  </div>
 
-  <div class="table-scroll">
-    <table class="table compact">
-      <thead>
-        <tr>
-          <th>Año</th><th>Mes</th>
-          <th class="num">M³ agua</th><th class="num">M³ gas</th><th class="num">Costo (CLP)</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for r in rows %}
-          <tr>
-            <td>{{ r.year }}</td>
-            <td>{{ r.month_label }}</td>
-            <td class="num">{{ r.m3_water|default:"—" }}</td>
-            <td class="num">{{ r.m3_gas|default:"—" }}</td>
-            <td class="num">{% if r.cost is not None %}${{ r.cost|floatformat:0|intcomma }}{% else %}—{% endif %}</td>
-          </tr>
-        {% empty %}
-          <tr>
-            <td colspan="5" class="empty">
-              <i class="fas fa-inbox"></i>
-              {% if selected_user_id %}
-                Este usuario aún no tiene registros de consumo.
-              {% else %}
-                Selecciona un usuario en el filtro de comparativas para ver sus registros.
-              {% endif %}
-            </td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-</section>
+    <div class="table-wrap">
+      <table class="table compact">
+        <thead>
+          <tr><th>Mes</th><th class="num">Agua (m³)</th><th class="num">Gas (m³)</th><th class="num">Costo (CLP)</th></tr>
+        </thead>
+        <tbody data-tabla="registros">
+          {% for r in rows %}
+            <tr data-valor="{{ r.year }}">
+              <td><span class="strong">{{ r.month_label }}</span> <span class="muted">{{ r.year }}</span></td>
+              <td class="num">{{ r.m3_water|floatformat:"2g"|default:"—" }}</td>
+              <td class="num">{{ r.m3_gas|floatformat:"2g"|default:"—" }}</td>
+              <td class="num">{% if r.cost is not None %}${{ r.cost|floatformat:"0g" }}{% else %}—{% endif %}</td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="4" class="empty">
+                <i class="fas fa-inbox"></i>
+                {% if selected_user %}Este cliente aún no tiene registros.{% else %}Selecciona un cliente arriba para ver sus registros.{% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
 
-<!-- =========================== MODAL DETALLE =========================== -->
+<!-- ============================ Modal: detalle ============================ -->
 <div id="modalDetalle" class="modal" aria-hidden="true">
   <div class="modal-backdrop" data-cerrar></div>
   <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="tituloDetalle">
     <div class="modal-head">
-      <h3 id="tituloDetalle"><i class="fas fa-id-card"></i> Detalle del usuario</h3>
-      <button class="modal-close" data-cerrar aria-label="Cerrar"><i class="fas fa-xmark"></i></button>
+      <h3 id="tituloDetalle">Detalle del cliente</h3>
+      <button type="button" class="modal-close" data-cerrar aria-label="Cerrar"><i class="fas fa-xmark"></i></button>
     </div>
-
     <div class="modal-body">
-      <div class="row">
-        <span class="avatar-lg" id="d-avatar">U</span>
+      <div class="profile-head">
+        <span class="avatar lg" data-d="inicial"></span>
         <div>
-          <div class="strong" style="font-size:var(--fs-lg)" id="d-username">—</div>
-          <div class="row" style="gap:8px;margin-top:4px">
-            <span class="chip-id mono">#<span id="d-id">—</span></span>
-            <span id="d-rol-badge" class="badge badge-info">—</span>
-            <span id="d-estado-badge" class="badge badge-muted">—</span>
-          </div>
+          <div class="name" data-d="username"></div>
+          <div class="badges"><span class="badge" data-d="rol"></span><span class="badge" data-d="estado"></span></div>
         </div>
       </div>
 
+      <div class="modal-section">Cuenta</div>
       <div class="kv-grid">
-        <div class="kv"><span class="k">Email</span><span class="v" id="d-email">—</span></div>
-        <div class="kv"><span class="k">Creado</span><span class="v" id="d-creado">—</span></div>
-        <div class="kv"><span class="k">Último acceso</span><span class="v" id="d-ultacceso">—</span></div>
-        <div class="kv"><span class="k">Intervalo mantención</span><span class="v" id="d-intervalo">—</span></div>
+        <div class="kv"><span class="k">Email</span><span class="v" data-d="email"></span></div>
+        <div class="kv"><span class="k">Último acceso</span><span class="v" data-d="last_login"></span></div>
+        <div class="kv"><span class="k">Creado</span><span class="v" data-d="date_joined"></span></div>
       </div>
 
-      <div class="modal-section-title">Sitio y contacto</div>
+      <div class="modal-section">Sitio y contacto</div>
       <div class="kv-grid">
-        <div class="kv"><span class="k">Ubicación</span><span class="v" id="d-ubicacion">—</span></div>
-        <div class="kv"><span class="k">ID externo</span><span class="v" id="d-idexterno">—</span></div>
-        <div class="kv"><span class="k">Encargado</span><span class="v" id="d-encargado">—</span></div>
-        <div class="kv"><span class="k">Teléfono</span><span class="v"><a id="d-telefono">—</a></span></div>
-        <div class="kv span-2"><span class="k">Dirección</span><span class="v" id="d-direccion">—</span></div>
-        <div class="kv span-2">
-          <span class="k">Link del equipo (Wecon)</span>
-          <span class="v break"><a id="d-link" target="_blank" rel="noopener noreferrer">—</a></span>
-        </div>
+        <div class="kv"><span class="k">Ubicación</span><span class="v" data-d="location"></span></div>
+        <div class="kv"><span class="k">ID externo</span><span class="v mono" data-d="external_id"></span></div>
+        <div class="kv"><span class="k">Encargado</span><span class="v" data-d="manager_name"></span></div>
+        <div class="kv"><span class="k">Teléfono</span><span class="v"><a data-d="phone"></a></span></div>
+        <div class="kv span-2"><span class="k">Dirección</span><span class="v" data-d="address"></span></div>
+        <div class="kv span-2"><span class="k">Link del equipo (Wecon)</span><span class="v"><a data-d="link" target="_blank" rel="noopener noreferrer"></a></span></div>
       </div>
 
-      <div class="modal-section-title">Mantenciones</div>
+      <div class="modal-section">Mantenciones</div>
       <div class="kv-grid">
-        <div class="kv"><span class="k">Última</span><span class="v" id="d-ultmant">—</span></div>
-        <div class="kv"><span class="k">Próxima</span><span class="v" id="d-proxmant">—</span></div>
+        <div class="kv"><span class="k">Última</span><span class="v" data-d="last_maintenance"></span></div>
+        <div class="kv"><span class="k">Próxima</span><span class="v" data-d="next_maintenance"></span></div>
+        <div class="kv"><span class="k">Intervalo</span><span class="v" data-d="intervalo"></span></div>
       </div>
     </div>
-
     <div class="modal-foot">
-      <button class="btn" data-cerrar>Cerrar</button>
+      <button type="button" class="btn" data-cerrar>Cerrar</button>
+      <button type="button" class="btn btn-primary" id="detalleEditar"><i class="fas fa-pen"></i> Editar</button>
     </div>
   </div>
 </div>
 
-<!-- =========================== MODAL EDITAR =========================== -->
+<!-- ============================ Modal: edición ============================ -->
 <div id="modalEditar" class="modal" aria-hidden="true">
   <div class="modal-backdrop" data-cerrar></div>
   <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="tituloEditar">
     <div class="modal-head">
-      <h3 id="tituloEditar"><i class="fas fa-pen"></i> Editar usuario</h3>
-      <button class="modal-close" data-cerrar aria-label="Cerrar"><i class="fas fa-xmark"></i></button>
+      <h3 id="tituloEditar">Editar cliente</h3>
+      <button type="button" class="modal-close" data-cerrar aria-label="Cerrar"><i class="fas fa-xmark"></i></button>
     </div>
 
     <form id="formEditar" class="modal-body" novalidate>
-      {% csrf_token %}
-      <input type="hidden" id="e-id">
+      <div id="e-error" class="alert alert-error hidden"><i class="fas fa-circle-exclamation"></i><div></div></div>
 
-      <div id="e-error-general" class="alert alert-error hidden">
-        <i class="fas fa-circle-exclamation"></i><div></div>
-      </div>
-
-      <div class="form-grid" style="align-items:start">
-        <div class="field">
-          <label class="label" for="e-username">Usuario</label>
-          <input type="text" id="e-username" name="username" class="input" required>
-          <div class="err" data-error="username"></div>
-        </div>
-
-        <div class="field">
-          <label class="label" for="e-email">Email</label>
-          <input type="email" id="e-email" name="email" class="input">
-          <div class="err" data-error="email"></div>
-        </div>
-
+      <div class="modal-section">Cuenta</div>
+      <div class="form-grid cols-2">
+        <div class="field"><label class="label" for="e-username">Usuario</label><input id="e-username" name="username" class="input" required><div class="err" data-error="username"></div></div>
+        <div class="field"><label class="label" for="e-email">Email</label><input id="e-email" type="email" name="email" class="input"><div class="err" data-error="email"></div></div>
         <div class="field">
           <label class="label" for="e-role">Rol</label>
-          <select id="e-role" name="role" class="input">
-            <option value="user">Usuario</option>
-            <option value="admin">Administrador</option>
-          </select>
+          <select id="e-role" name="role" class="input"><option value="user">Usuario</option><option value="admin">Administrador</option></select>
           <div class="err" data-error="role"></div>
         </div>
-
         <div class="field">
           <label class="label" for="e-activo">Estado</label>
-          <select id="e-activo" name="is_active" class="input">
-            <option value="True">Activo</option>
-            <option value="">Inactivo</option>
-          </select>
+          <select id="e-activo" name="is_active" class="input"><option value="True">Activo</option><option value="">Inactivo</option></select>
           <div class="err" data-error="is_active"></div>
         </div>
-
-        <div class="field">
-          <label class="label" for="e-ubicacion">Ubicación</label>
-          <input type="text" id="e-ubicacion" name="location" class="input">
-          <div class="err" data-error="location"></div>
-        </div>
-
-        <div class="field">
-          <label class="label" for="e-idexterno">ID externo</label>
-          <input type="text" id="e-idexterno" name="external_id" class="input">
-          <div class="err" data-error="external_id"></div>
-        </div>
-
-        <div class="field">
-          <label class="label" for="e-encargado">Encargado</label>
-          <input type="text" id="e-encargado" name="manager_name" class="input">
-          <div class="err" data-error="manager_name"></div>
-        </div>
-
-        <div class="field">
-          <label class="label" for="e-telefono">Teléfono</label>
-          <input type="text" id="e-telefono" name="phone" class="input">
-          <div class="err" data-error="phone"></div>
-        </div>
       </div>
 
-      <div class="field">
-        <label class="label" for="e-direccion">Dirección</label>
-        <input type="text" id="e-direccion" name="address" class="input">
-        <div class="err" data-error="address"></div>
-      </div>
-
-      <div class="field">
-        <label class="label" for="e-link">
-          <i class="fas fa-link"></i> Link del equipo (Wecon)
-        </label>
-        <input type="url" id="e-link" name="link" class="input"
-               placeholder="https://servidor-wecon/..." spellcheck="false">
-        <div class="help">Es el enlace que el cliente ve en su panel como «Ver mi caldera».</div>
-        <div class="err" data-error="link"></div>
+      <div class="modal-section">Sitio</div>
+      <div class="form-grid cols-2">
+        <div class="field"><label class="label" for="e-location">Ubicación</label><input id="e-location" name="location" class="input"><div class="err" data-error="location"></div></div>
+        <div class="field"><label class="label" for="e-external">ID externo</label><input id="e-external" name="external_id" class="input"><div class="err" data-error="external_id"></div></div>
+        <div class="field"><label class="label" for="e-manager">Encargado</label><input id="e-manager" name="manager_name" class="input"><div class="err" data-error="manager_name"></div></div>
+        <div class="field"><label class="label" for="e-phone">Teléfono</label><input id="e-phone" name="phone" class="input"><div class="err" data-error="phone"></div></div>
+        <div class="field span-all"><label class="label" for="e-address">Dirección</label><input id="e-address" name="address" class="input"><div class="err" data-error="address"></div></div>
+        <div class="field span-all">
+          <label class="label" for="e-link">Link del equipo (Wecon)</label>
+          <input id="e-link" type="url" name="link" class="input" placeholder="https://…" spellcheck="false">
+          <div class="help">El cliente lo abre con el botón «Ver mi caldera».</div>
+          <div class="err" data-error="link"></div>
+        </div>
       </div>
     </form>
 
     <div class="modal-foot">
-      <button class="btn" data-cerrar>Cancelar</button>
-      <button class="btn btn-primary" type="submit" form="formEditar" id="btnGuardarEdicion">
-        <i class="fas fa-floppy-disk"></i> Guardar cambios
-      </button>
+      <button type="button" class="btn" data-cerrar>Cancelar</button>
+      <button type="submit" class="btn btn-primary" form="formEditar" id="btnGuardarEdicion"><i class="fas fa-floppy-disk"></i> Guardar cambios</button>
     </div>
   </div>
 </div>
 
+{{ fichas|json_script:"fichas-usuarios" }}
+{{ chart_data|json_script:"datos-graficos" }}
 {% endblock %}
-
 
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<script>
-/* ============================ Utilidades ============================ */
-const csrfToken = document.querySelector('#formEditar [name=csrfmiddlewaretoken]').value;
-const leerCSS = (v, alt) => (getComputedStyle(document.documentElement).getPropertyValue(v) || alt).trim();
-const conAlfa = (hex, a) => {
-  const m = hex.replace('#', '');
-  return `rgba(${parseInt(m.slice(0,2),16)},${parseInt(m.slice(2,4),16)},${parseInt(m.slice(4,6),16)},${a})`;
-};
-const esHttp = (u) => /^https?:\/\//i.test(u || '');
-
-/* ============================= Gráficos ============================= */
-const colorPrev = leerCSS('--brand-700', '#334155');
-const colorAhora = leerCSS('--accent-500', '#0ea5e9');
-const colorLinea = leerCSS('--line', '#e2e8f0');
-const colorTexto = leerCSS('--fg-muted', '#64748b');
-
-const opcionesBase = {
-  responsive: true,
-  maintainAspectRatio: false,
-  interaction: { mode: 'index', intersect: false },
-  scales: {
-    x: { grid: { color: colorLinea }, ticks: { color: colorTexto } },
-    y: {
-      beginAtZero: true,
-      grid: { color: colorLinea },
-      ticks: { color: colorTexto },
-      title: { display: true, text: 'm³', color: colorTexto }
-    }
-  },
-  plugins: {
-    legend: { labels: { color: colorTexto, usePointStyle: true, boxWidth: 8 } },
-    tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${c.parsed.y ?? 0} m³` } }
-  }
-};
-
-const datos = JSON.parse(document.getElementById('datos-graficos').textContent);
-
-const graficoAgua = new Chart(document.getElementById('graficoAgua'), {
-  type: 'bar',
-  data: {
-    labels: datos.labels,
-    datasets: [
-      { label: `Agua ${datos.years.prev}`, data: datos.water.prev,
-        backgroundColor: conAlfa(colorPrev, .30), borderColor: colorPrev, borderWidth: 1.5, borderRadius: 5 },
-      { label: `Agua ${datos.years.now}`, data: datos.water.now,
-        backgroundColor: conAlfa(colorAhora, .55), borderColor: colorAhora, borderWidth: 1.5, borderRadius: 5 }
-    ]
-  },
-  options: opcionesBase
-});
-
-const graficoGas = new Chart(document.getElementById('graficoGas'), {
-  type: 'line',
-  data: {
-    labels: datos.labels,
-    datasets: [
-      { label: `Gas ${datos.years.prev}`, data: datos.gas.prev,
-        borderColor: colorPrev, backgroundColor: conAlfa(colorPrev, .10),
-        borderWidth: 2, fill: true, tension: .35, pointRadius: 2, borderDash: [5, 4] },
-      { label: `Gas ${datos.years.now}`, data: datos.gas.now,
-        borderColor: colorAhora, backgroundColor: conAlfa(colorAhora, .14),
-        borderWidth: 2.5, fill: true, tension: .35, pointRadius: 2 }
-    ]
-  },
-  options: opcionesBase
-});
-
-/* ------- Recarga de gráficos al cambiar el usuario seleccionado ------- */
-(() => {
-  const selector = document.getElementById('filtroUsuario');
-  const cargando = document.getElementById('cargandoGraficos');
-  const selectorForm = document.getElementById('{{ admin_form.user.id_for_label }}');
-  if (!selector) return;
-
-  {% if selected_user_id %}
-    if (selectorForm) selectorForm.value = "{{ selected_user_id }}";
-  {% endif %}
-
-  selector.addEventListener('change', async (e) => {
-    const id = e.target.value || '';
-    if (selectorForm) selectorForm.value = id;
-    cargando.classList.remove('hidden');
-
-    try {
-      const url = new URL('{% url "admin_chart_data" %}', location.origin);
-      if (id) url.searchParams.set('user_id', id);
-      const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
-      if (!res.ok) throw new Error(res.status);
-      const { chart_data } = await res.json();
-
-      graficoAgua.data.datasets[0].data = chart_data.water.prev;
-      graficoAgua.data.datasets[1].data = chart_data.water.now;
-      graficoGas.data.datasets[0].data = chart_data.gas.prev;
-      graficoGas.data.datasets[1].data = chart_data.gas.now;
-      graficoAgua.update();
-      graficoGas.update();
-
-      // La tabla de registros se arma en el servidor: refrescamos la URL.
-      const destino = new URL(location.href);
-      if (id) destino.searchParams.set('selected_user', id);
-      else destino.searchParams.delete('selected_user');
-      destino.hash = 'consumo';
-      location.href = destino.toString();
-    } catch (err) {
-      console.error(err);
-      alert('No se pudieron cargar los datos de ese usuario.');
-    } finally {
-      cargando.classList.add('hidden');
-    }
-  });
-})();
-
-/* ====================== Manejo genérico de modales ====================== */
-function abrirModal(el) {
-  el.classList.add('is-open');
-  el.setAttribute('aria-hidden', 'false');
-  document.body.style.overflow = 'hidden';
-}
-function cerrarModal(el) {
-  el.classList.remove('is-open');
-  el.setAttribute('aria-hidden', 'true');
-  document.body.style.overflow = '';
-}
-document.querySelectorAll('.modal').forEach((modal) => {
-  modal.querySelectorAll('[data-cerrar]').forEach((b) =>
-    b.addEventListener('click', () => cerrarModal(modal)));
-});
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') document.querySelectorAll('.modal.is-open').forEach(cerrarModal);
-});
-
-/* ========================== Modal de detalle ========================== */
-(() => {
-  const modal = document.getElementById('modalDetalle');
-  const $ = (id) => document.getElementById(id);
-  const texto = (id, v) => { $(id).textContent = v && v.trim() ? v : '—'; };
-
-  document.querySelectorAll('.js-ver').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const d = btn.dataset;
-
-      $('d-avatar').textContent = (d.username || 'U').charAt(0).toUpperCase();
-      texto('d-username', d.username);
-      texto('d-id', d.id);
-
-      const rol = $('d-rol-badge');
-      rol.textContent = d.rol || '—';
-      rol.className = 'badge ' + (d.rolcodigo === 'admin' ? 'badge-danger' : 'badge-info');
-
-      const estado = $('d-estado-badge');
-      estado.textContent = d.activo === '1' ? 'Activo' : 'Inactivo';
-      estado.className = 'badge ' + (d.activo === '1' ? 'badge-ok' : 'badge-muted');
-
-      texto('d-email', d.email);
-      texto('d-creado', d.creado);
-      texto('d-ultacceso', d.ultacceso);
-      texto('d-intervalo', d.intervalo ? d.intervalo + ' meses' : '');
-      texto('d-ubicacion', d.ubicacion);
-      texto('d-idexterno', d.idexterno);
-      texto('d-encargado', d.encargado);
-      texto('d-direccion', d.direccion);
-      texto('d-ultmant', d.ultmant);
-      texto('d-proxmant', d.proxmant);
-
-      const tel = $('d-telefono');
-      if (d.telefono && d.telefono.trim()) {
-        tel.textContent = d.telefono;
-        tel.href = 'tel:' + d.telefono.replace(/\s+/g, '');
-      } else {
-        tel.textContent = '—';
-        tel.removeAttribute('href');
-      }
-
-      const link = $('d-link');
-      if (esHttp(d.link)) {
-        link.textContent = d.link;
-        link.href = d.link;
-      } else {
-        link.textContent = 'Sin link configurado';
-        link.removeAttribute('href');
-      }
-
-      abrirModal(modal);
-    });
-  });
-})();
-
-/* ========================== Modal de edición ========================== */
-(() => {
-  const modal = document.getElementById('modalEditar');
-  const form = document.getElementById('formEditar');
-  const boton = document.getElementById('btnGuardarEdicion');
-  const errorGeneral = document.getElementById('e-error-general');
-
-  const limpiarErrores = () => {
-    form.querySelectorAll('[data-error]').forEach((e) => (e.textContent = ''));
-    form.querySelectorAll('.field').forEach((f) => f.classList.remove('has-error'));
-    errorGeneral.classList.add('hidden');
-  };
-
-  document.querySelectorAll('.js-editar').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const d = btn.dataset;
-      limpiarErrores();
-      document.getElementById('e-id').value = d.id || '';
-      form.username.value = d.username || '';
-      form.email.value = d.email || '';
-      form.role.value = d.rolcodigo || 'user';
-      form.is_active.value = d.activo === '1' ? 'True' : '';
-      form.location.value = d.ubicacion || '';
-      form.external_id.value = d.idexterno || '';
-      form.manager_name.value = d.encargado || '';
-      form.phone.value = d.telefono || '';
-      form.address.value = d.direccion || '';
-      form.link.value = d.link || '';
-      abrirModal(modal);
-      setTimeout(() => form.username.focus(), 50);
-    });
-  });
-
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    limpiarErrores();
-
-    const id = document.getElementById('e-id').value;
-    const datos = new FormData(form);
-    // is_active vacío = inactivo: BooleanField de Django lo interpreta asi.
-    if (!datos.get('is_active')) datos.delete('is_active');
-
-    boton.disabled = true;
-    boton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando…';
-
-    try {
-      const res = await fetch(`/usuarios/${id}/editar/`, {
-        method: 'POST',
-        body: datos,
-        headers: { 'X-CSRFToken': csrfToken }
-      });
-      const payload = await res.json().catch(() => ({}));
-
-      if (res.ok && payload.ok) {
-        location.reload();
-        return;
-      }
-
-      const errores = payload.errores || {};
-      let mostrado = false;
-      Object.entries(errores).forEach(([campo, mensajes]) => {
-        const destino = form.querySelector(`[data-error="${campo}"]`);
-        if (destino) {
-          destino.textContent = mensajes.join(' ');
-          destino.closest('.field')?.classList.add('has-error');
-          mostrado = true;
-        }
-      });
-      if (!mostrado) {
-        errorGeneral.querySelector('div').textContent =
-          Object.values(errores).flat().join(' ') || 'No se pudo guardar. Revisa los datos.';
-        errorGeneral.classList.remove('hidden');
-      }
-    } catch (err) {
-      console.error(err);
-      errorGeneral.querySelector('div').textContent = 'Error de conexión. Intenta de nuevo.';
-      errorGeneral.classList.remove('hidden');
-    } finally {
-      boton.disabled = false;
-      boton.innerHTML = '<i class="fas fa-floppy-disk"></i> Guardar cambios';
-    }
-  });
-})();
-
-/* ============ Resalta la sección visible en la barra lateral ============ */
-(() => {
-  const enlaces = Array.from(document.querySelectorAll('.app-sidebar .side-link'));
-  const secciones = enlaces
-    .map((a) => document.querySelector(a.getAttribute('href')))
-    .filter(Boolean);
-  if (!secciones.length) return;
-
-  const observador = new IntersectionObserver((entradas) => {
-    const visible = entradas
-      .filter((e) => e.isIntersecting)
-      .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-    if (!visible) return;
-    enlaces.forEach((a) =>
-      a.classList.toggle('is-active', a.getAttribute('href') === '#' + visible.target.id));
-  }, { rootMargin: '-80px 0px -55% 0px', threshold: [0.15, 0.4, 0.75] });
-
-  secciones.forEach((s) => observador.observe(s));
-})();
-</script>
+<script src="{% static 'js/graficos.js' %}"></script>
+<script src="{% static 'js/admin.js' %}"></script>
 {% endblock %}

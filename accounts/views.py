@@ -9,18 +9,16 @@ generacion de reportes en ``accounts.reports``.
 
 from __future__ import annotations
 
-import datetime
 import json
 from functools import wraps
 
-from django import forms
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.core.mail import EmailMessage
 from django.core.paginator import Paginator
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Count, Q
 from django.db.models.deletion import ProtectedError
 from django.http import Http404, HttpRequest, HttpResponse, JsonResponse, QueryDict
 from django.shortcuts import get_object_or_404, redirect, render
@@ -34,6 +32,7 @@ from .forms import (
     AdminEditUserForm,
     AdminGasConsumptionForm,
     GasConsumptionForm,
+    LoginForm,
     PreferenciasReporteForm,
     ProfileForm,
     ProfilePanelForm,
@@ -83,11 +82,6 @@ user_required = role_required(User.Roles.USER, User.Roles.ADMIN)
 # =============================================================================
 # Autenticacion
 # =============================================================================
-class LoginForm(forms.Form):
-    username = forms.CharField(label="Usuario")
-    password = forms.CharField(label="Contraseña", widget=forms.PasswordInput)
-
-
 def login_view(request: HttpRequest) -> HttpResponse:
     if request.user.is_authenticated:
         return redirect(redirect_by_role(request.user))
@@ -146,6 +140,48 @@ def _filtros_de_usuarios(request: HttpRequest):
     return usuarios, texto, rol, estado
 
 
+def _ficha_usuario(u: User) -> dict:
+    """Datos de un usuario para los modales de detalle y edicion.
+
+    Se entregan como JSON (``json_script``) en vez de repetir quince atributos
+    ``data-*`` en cada boton de la tabla.
+    """
+    perfil = getattr(u, "profile", None)
+    fecha = lambda f, fmt="%d/%m/%Y": f.strftime(fmt) if f else ""  # noqa: E731
+    ultimo = timezone.localtime(u.last_login) if u.last_login else None
+    return {
+        "id": u.id,
+        "username": u.username,
+        "email": u.email or "",
+        "role": u.role,
+        "role_label": u.get_role_display(),
+        "is_active": u.is_active,
+        "date_joined": fecha(timezone.localtime(u.date_joined), "%d/%m/%Y %H:%M"),
+        "last_login": fecha(ultimo, "%d/%m/%Y %H:%M"),
+        "location": perfil.location if perfil else "",
+        "external_id": perfil.external_id if perfil else "",
+        "manager_name": perfil.manager_name if perfil else "",
+        "phone": perfil.phone if perfil else "",
+        "address": perfil.address if perfil else "",
+        "link": perfil.link if perfil else "",
+        "last_maintenance": fecha(perfil.last_maintenance) if perfil else "",
+        "next_maintenance": fecha(perfil.next_maintenance) if perfil else "",
+        "maintenance_interval_months": perfil.maintenance_interval_months if perfil else None,
+        "edit_url": reverse("usuario_editar", args=[u.id]),
+    }
+
+
+def _conteo_usuarios() -> dict:
+    """Indicadores de la cabecera del panel, en una sola consulta."""
+    conteo = User.objects.aggregate(
+        total=Count("id"),
+        activos=Count("id", filter=Q(is_active=True)),
+    )
+    conteo["inactivos"] = conteo["total"] - conteo["activos"]
+    conteo["sin_link"] = Profile.objects.filter(Q(link="") | Q(link__isnull=True)).count()
+    return conteo
+
+
 @admin_required
 def admin_dashboard(request: HttpRequest) -> HttpResponse:
     """Panel de administracion: usuarios, comparativas y alta de consumo."""
@@ -190,10 +226,11 @@ def admin_dashboard(request: HttpRequest) -> HttpResponse:
     )
 
     # ---- Registros del usuario seleccionado ----
-    filas, totales, anio_tabla = [], {}, None
+    filas, totales, anio_tabla, usuario_sel = [], {}, None, None
     if id_seleccionado:
         usuario_sel = User.objects.filter(pk=id_seleccionado).first()
         if usuario_sel:
+            admin_form.fields["user"].initial = usuario_sel.pk
             filas = services.historial(usuario_sel)
             anio_tabla = filas[0].year if filas else None
             totales = services.resumen_anual(usuario_sel, anio_tabla)
@@ -218,22 +255,20 @@ def admin_dashboard(request: HttpRequest) -> HttpResponse:
         "chart_data": chart_data,
         "admin_form": admin_form,
         "selected_user_id": selected_user_id,
+        "selected_user": usuario_sel,
         "rows": filas,
+        "years_in_rows": sorted({f.year for f in filas}, reverse=True),
         "year_now_tbl": anio_tabla,
         "totals": totales,
         "users_for_filter": User.objects.order_by("username").only("id", "username"),
         "page_obj": pagina,
         "paginator": paginador,
+        "fichas": {u.id: _ficha_usuario(u) for u in pagina},
         "q": texto,
         "role_filter": rol,
         "status_filter": estado,
         "filtros_qs": filtros_qs,
-        "total_users": User.objects.count(),
-        "total_activos": User.objects.filter(is_active=True).count(),
-        "total_inactivos": User.objects.filter(is_active=False).count(),
-        "total_sin_link": Profile.objects.filter(
-            Q(link="") | Q(link__isnull=True)
-        ).count(),
+        "conteo": _conteo_usuarios(),
     })
 
 
@@ -331,10 +366,7 @@ def user_dashboard(request: HttpRequest) -> HttpResponse:
         "rows": filas,
         "year_now": anio_actual,
         "totals": resumen,
-        "avg_current": {
-            "water_avg": resumen["water_avg"],
-            "gas_avg": resumen["gas_avg"],
-        },
+        "series": services.series_por_anio(usuario),
         "years_available": anios,
         "months_available": list(months.NOMBRES),
         "selected_year": anio_pedido,
@@ -454,7 +486,7 @@ def lista_usuarios(request: HttpRequest) -> HttpResponse:
 # =============================================================================
 def _anio_pedido(valor) -> int:
     try:
-        return int(valor) if valor else datetime.date.today().year
+        return int(valor) if valor else timezone.localdate().year
     except (TypeError, ValueError):
         raise Http404("Año inválido")
 
