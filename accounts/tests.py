@@ -6,11 +6,13 @@ corrigieron: normalización de meses, alta de consumo sin duplicados, permisos
 por rol, y el link de Wecon editable desde la interfaz.
 """
 
+import datetime
 from decimal import Decimal
 
 from django.db import IntegrityError, transaction
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 
 from . import months, reports, services
 from .models import GasConsumption, Profile, User, sumar_meses
@@ -700,3 +702,102 @@ class ApiAppMovilTest(TestCase):
         self.assertEqual(GasConsumption.objects.get(user=self.otro).cost, Decimal("999"))
         datos = self.client.get(f"/api/panel/?user_id={self.otro.id}", **auth).json()
         self.assertEqual(datos["usuario"]["username"], "colegio")
+
+
+class ApiAdministracionTest(TestCase):
+    """Endpoints de administración de la app móvil."""
+
+    def setUp(self):
+        self.admin = User.objects.create_user("jefe", "j@e.cl", "clave-segura-3", role="admin")
+        self.cliente = User.objects.create_user("hotel", "h@e.cl", "clave-segura-1", role="user")
+        perfil = self.cliente.profile
+        perfil.location = "Hotel Central"
+        perfil.link = "https://example.com/wecon/1"
+        perfil.save()
+
+    def _auth(self, usuario, clave):
+        r = self.client.post("/api/auth/token/", {"username": usuario, "password": clave},
+                             content_type="application/json")
+        return {"HTTP_AUTHORIZATION": f"Bearer {r.json()['access']}"}
+
+    def _patch(self, pk, datos, auth):
+        return self.client.patch(f"/api/clientes/{pk}/", datos, content_type="application/json", **auth)
+
+    def test_superusuario_con_rol_usuario_es_admin_en_la_app(self):
+        User.objects.create_superuser("root", "r@e.cl", "clave-segura-9")  # role queda "user"
+        auth = self._auth("root", "clave-segura-9")
+        panel = self.client.get("/api/panel/", **auth).json()
+        self.assertTrue(panel["usuario"]["es_admin"])
+        self.assertEqual(self.client.get("/api/admin/resumen/", **auth).status_code, 200)
+
+    def test_cliente_no_accede_a_administracion(self):
+        auth = self._auth("hotel", "clave-segura-1")
+        self.assertFalse(self.client.get("/api/panel/", **auth).json()["usuario"]["es_admin"])
+        for url in ("/api/admin/resumen/", "/api/clientes/", f"/api/clientes/{self.admin.id}/"):
+            self.assertEqual(self.client.get(url, **auth).status_code, 403)
+
+    def test_resumen_cuenta_sin_link_y_mantenciones(self):
+        User.objects.create_superuser("root", "r@e.cl", "clave-segura-9")  # no cuenta como cliente
+        colegio = User.objects.create_user("colegio", "c@e.cl", "clave-segura-2")
+        p = colegio.profile
+        p.next_maintenance = timezone.localdate() - datetime.timedelta(days=3)
+        p.save()
+        datos = self.client.get("/api/admin/resumen/", **self._auth("jefe", "clave-segura-3")).json()
+        self.assertEqual(datos["conteo"]["total"], 4)
+        self.assertEqual(datos["conteo"]["sin_link"], 1)
+        self.assertEqual(datos["conteo"]["mantencion_vencida"], 1)
+        self.assertEqual([c["username"] for c in datos["mantencion"]], ["colegio"])
+
+    def test_crear_cliente_con_perfil(self):
+        auth = self._auth("jefe", "clave-segura-3")
+        r = self.client.post("/api/clientes/", {
+            "username": "nuevo", "email": "n@e.cl", "role": "user",
+            "password1": "Una-clave-larga-1", "password2": "Una-clave-larga-1",
+            "location": "Planta Norte", "link": "https://example.com/w/9",
+            "last_maintenance": "2026-01-10", "maintenance_interval_months": 6,
+        }, content_type="application/json", **auth)
+        self.assertEqual(r.status_code, 201, r.content)
+        self.assertEqual(r.json()["next_maintenance"], "2026-07-10")
+        self.assertTrue(self.client.login(username="nuevo", password="Una-clave-larga-1"))
+
+    def test_crear_cliente_valida(self):
+        r = self.client.post("/api/clientes/", {
+            "username": "hotel", "role": "user", "password1": "a", "password2": "b",
+            "link": "javascript:alert(1)",
+        }, content_type="application/json", **self._auth("jefe", "clave-segura-3"))
+        self.assertEqual(r.status_code, 400)
+        self.assertEqual({"username", "password2", "link"} - set(r.json()["errores"]), set())
+
+    def test_editar_solo_cambia_lo_enviado(self):
+        r = self._patch(self.cliente.id, {"link": "https://example.com/wecon/nuevo"},
+                        self._auth("jefe", "clave-segura-3"))
+        self.assertEqual(r.status_code, 200, r.content)
+        self.cliente.refresh_from_db()
+        self.assertEqual(self.cliente.profile.link, "https://example.com/wecon/nuevo")
+        self.assertEqual(self.cliente.profile.location, "Hotel Central")
+        self.assertEqual(self.cliente.email, "h@e.cl")
+        self.assertTrue(self.cliente.is_active)
+
+    def test_registrar_mantencion_recalcula_la_proxima(self):
+        auth = self._auth("jefe", "clave-segura-3")
+        self._patch(self.cliente.id, {"last_maintenance": "2025-01-01", "next_maintenance": "2025-06-01"}, auth)
+        r = self._patch(self.cliente.id, {"last_maintenance": "2026-02-15"}, auth)
+        self.assertEqual(r.json()["next_maintenance"], "2027-02-15")
+
+    def test_desactivar_y_reactivar(self):
+        auth = self._auth("jefe", "clave-segura-3")
+        self.assertFalse(self._patch(self.cliente.id, {"is_active": False}, auth).json()["is_active"])
+        self.assertTrue(self._patch(self.cliente.id, {"is_active": True}, auth).json()["is_active"])
+
+    def test_admin_no_se_bloquea_a_si_mismo(self):
+        auth = self._auth("jefe", "clave-segura-3")
+        self.assertEqual(self._patch(self.admin.id, {"is_active": False}, auth).status_code, 400)
+        self.assertEqual(self._patch(self.admin.id, {"role": "user"}, auth).status_code, 400)
+        self.assertEqual(self.client.delete(f"/api/clientes/{self.admin.id}/", **auth).status_code, 400)
+
+    def test_eliminar_cliente_borra_su_consumo(self):
+        services.registrar_consumo(user=self.cliente, year=2026, month="nov", m3_gas=5)
+        r = self.client.delete(f"/api/clientes/{self.cliente.id}/", **self._auth("jefe", "clave-segura-3"))
+        self.assertEqual(r.status_code, 204)
+        self.assertFalse(User.objects.filter(username="hotel").exists())
+        self.assertFalse(GasConsumption.objects.exists())

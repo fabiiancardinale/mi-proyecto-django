@@ -7,18 +7,30 @@ import '../formato.dart';
 import '../tema.dart';
 import '../widgets/grafico_consumo.dart';
 import '../widgets/tarjetas.dart';
+import 'admin/editar_cliente.dart';
+import 'admin/lista_clientes.dart' show Etiqueta;
 import 'inicio.dart';
 import 'registrar.dart';
 
 /// Panel de consumo de un cliente. Si [usuarioId] viene, lo abre un
 /// administrador para ver a ese cliente.
 class PantallaPanel extends StatefulWidget {
-  const PantallaPanel({super.key, required this.api, this.panelInicial, this.usuarioId, this.esAdmin = false});
+  const PantallaPanel({
+    super.key,
+    required this.api,
+    this.panelInicial,
+    this.usuarioId,
+    this.esAdmin = false,
+    this.ficha,
+  });
 
   final ClienteApi api;
   final Panel? panelInicial;
   final int? usuarioId;
   final bool esAdmin;
+
+  /// Cuenta del cliente, cuando lo abre un administrador.
+  final FichaCliente? ficha;
 
   @override
   State<PantallaPanel> createState() => _PantallaPanelState();
@@ -31,6 +43,7 @@ class _PantallaPanelState extends State<PantallaPanel> {
   int? _anioA;
   int? _anioB;
   int? _anioHistorial;
+  late FichaCliente? _ficha = widget.ficha;
 
   @override
   void initState() {
@@ -77,6 +90,44 @@ class _PantallaPanelState extends State<PantallaPanel> {
     }
   }
 
+  Future<void> _editar() async {
+    final guardado = await Navigator.of(context).push<FichaCliente>(
+      MaterialPageRoute(builder: (_) => PantallaEditarCliente(api: widget.api, ficha: _ficha)),
+    );
+    if (guardado == null || !mounted) return;
+    setState(() => _ficha = guardado);
+    await _cargar();
+    if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cambios guardados')));
+  }
+
+  Future<void> _eliminar() async {
+    final f = _ficha!;
+    final confirmado = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('¿Eliminar a ${f.username}?'),
+        content: const Text('Se borrarán también todos sus registros de consumo. Esta acción no se puede deshacer.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colores.peligro, minimumSize: const Size(0, 40)),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmado != true || !mounted) return;
+    try {
+      await widget.api.eliminarCliente(f.id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Cliente "${f.username}" eliminado')));
+      Navigator.of(context).pop(true);
+    } on ErrorApi catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.mensaje)));
+    }
+  }
+
   Future<void> _abrirCaldera(String link) async {
     final ok = await launchUrl(Uri.parse(link), mode: LaunchMode.externalApplication);
     if (!ok && mounted) {
@@ -97,6 +148,22 @@ class _PantallaPanelState extends State<PantallaPanel> {
                 ? panel.usuario.username
                 : 'Hola, ${panel.usuario.nombre}'),
         actions: [
+          if (_ficha != null) ...[
+            IconButton(tooltip: 'Editar cliente', icon: const Icon(Icons.edit_outlined), onPressed: _editar),
+            PopupMenuButton<String>(
+              onSelected: (v) => v == 'eliminar' ? _eliminar() : null,
+              itemBuilder: (_) => const [
+                PopupMenuItem(
+                  value: 'eliminar',
+                  child: ListTile(
+                    leading: Icon(Icons.delete_outline, color: Colores.peligro),
+                    title: Text('Eliminar cliente', style: TextStyle(color: Colores.peligro)),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+              ],
+            ),
+          ],
           if (!viendoCliente)
             IconButton(
               tooltip: 'Cerrar sesión',
@@ -153,7 +220,11 @@ class _PantallaPanelState extends State<PantallaPanel> {
             label: Text(widget.usuarioId == null ? 'Ver mi caldera' : 'Ver caldera'),
           )
         else
-          const Aviso(texto: 'Aún no hay un link configurado para esta caldera. Pídele a un administrador que lo agregue.'),
+          Aviso(
+            texto: widget.esAdmin
+                ? 'Este cliente no tiene link de Wecon. Agrégalo con «Editar».'
+                : 'Aún no hay un link configurado para esta caldera. Pídele a un administrador que lo agregue.',
+          ),
         const SizedBox(height: 16),
 
         // ---------------------------------------------------- Indicadores
@@ -282,6 +353,35 @@ class _PantallaPanelState extends State<PantallaPanel> {
                 ),
         ),
         const SizedBox(height: 16),
+
+        // ---------------------------------------------- Cuenta (solo admin)
+        if (_ficha case final f?) ...[
+          Seccion(
+            titulo: 'Cuenta',
+            icono: Icons.manage_accounts_outlined,
+            accion: TextButton(onPressed: _editar, child: const Text('Editar')),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Wrap(spacing: 6, children: [
+                  f.activo
+                      ? const Etiqueta('Activo', Colores.costoSuave, Colores.ok)
+                      : const Etiqueta('Inactivo', Colores.superficie3, Colores.textoSuave),
+                  f.esAdmin
+                      ? const Etiqueta('Administrador', Colores.tinta, Colors.white)
+                      : const Etiqueta('Cliente', Colores.superficie3, Colores.texto),
+                  if (!f.tieneLink) const Etiqueta('Sin link Wecon', Colores.avisoSuave, Colores.aviso),
+                ]),
+                const SizedBox(height: 8),
+                _Dato('Email', f.email),
+                _Dato('Último acceso', f.ultimoAcceso == null ? 'Nunca' : fecha(f.ultimoAcceso!.toLocal())),
+                _Dato('Creado', fecha(f.creado?.toLocal())),
+                _Dato('Link Wecon', f.link),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
 
         // --------------------------------------------------------- Sitio
         if (perfil != null)
