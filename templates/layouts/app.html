@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% comment %}
   Esqueleto de las páginas con sesión iniciada: barra lateral + contenido.
-  Las páginas definen {% block content %} y, si quieren, {% block nav_extra %}
-  para agregar enlaces propios a la barra lateral.
+  Las páginas definen {% block content %}. El menú es el mismo en todas las
+  páginas y marca como activa la opción de la vista actual.
 {% endcomment %}
 
 {% block body %}
@@ -20,11 +20,13 @@
         <a href="{% url 'admin_dashboard' %}" class="nav-item {% if vista == 'admin_dashboard' %}is-active{% endif %}">
           <i class="fas fa-gauge-high"></i><span>Panel</span>
         </a>
-        <a href="{% url 'create_user' %}" class="nav-item {% if vista == 'create_user' %}is-active{% endif %}">
-          <i class="fas fa-user-plus"></i><span>Nuevo cliente</span>
+        <a href="{% url 'usuarios_lista' %}" class="nav-item {% if vista == 'usuarios_lista' or vista == 'create_user' %}is-active{% endif %}">
+          <i class="fas fa-users"></i><span>Clientes</span>
+        </a>
+        <a href="{% url 'admin_consumo' %}" class="nav-item {% if vista == 'admin_consumo' %}is-active{% endif %}">
+          <i class="fas fa-chart-line"></i><span>Consumo</span>
         </a>
       {% endif %}
-      {% block nav_extra %}{% endblock %}
       <span class="nav-section">Mi cuenta</span>
       <a href="{% url 'user_dashboard' %}" class="nav-item {% if vista == 'user_dashboard' %}is-active{% endif %}">
         <i class="fas fa-chart-column"></i><span>Mi consumo</span>

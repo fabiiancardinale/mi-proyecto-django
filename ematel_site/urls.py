@@ -24,6 +24,7 @@ urlpatterns = [
 
     # Paneles
     path("panel/admin/", views.admin_dashboard, name="admin_dashboard"),
+    path("panel/admin/consumo/", views.admin_consumo, name="admin_consumo"),
     path("panel/admin/chart-data/", views.admin_chart_data, name="admin_chart_data"),
     path("panel/admin/consumption/add/", views.admin_add_consumption, name="admin_add_consumption"),
     path("panel/usuario/", views.user_dashboard, name="user_dashboard"),

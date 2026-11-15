@@ -1,52 +1,22 @@
 {% extends "layouts/app.html" %}
 {% load static %}
 
-{% block title %}Administración{% endblock %}
-
-{% block nav_extra %}
-  <a href="#clientes" class="nav-item"><i class="fas fa-users"></i><span>Clientes</span><span class="count">{{ conteo.total }}</span></a>
-  <a href="#consumo" class="nav-item"><i class="fas fa-chart-line"></i><span>Consumo</span></a>
-{% endblock %}
+{% block title %}Clientes{% endblock %}
 
 {% block content %}
 
 <header class="page-head">
   <div>
     <div class="eyebrow"><i class="fas fa-shield-halved"></i> Administración</div>
-    <h1>Panel general</h1>
-    <p class="sub">Clientes, links de equipos Wecon y registros de consumo.</p>
+    <h1>Clientes</h1>
+    <p class="sub">{{ conteo.total }} cuentas · {{ conteo.activos }} activas · {{ conteo.sin_link }} sin link Wecon</p>
   </div>
   <div class="actions">
     <a href="{% url 'create_user' %}" class="btn btn-primary"><i class="fas fa-user-plus"></i> Nuevo cliente</a>
   </div>
 </header>
 
-<!-- ============================ Indicadores ============================ -->
-<section class="kpi-grid" aria-label="Indicadores">
-  <article class="kpi">
-    <div class="kpi-top"><span class="kpi-icon info"><i class="fas fa-users"></i></span> Usuarios registrados</div>
-    <div class="kpi-value">{{ conteo.total }}</div>
-    <div class="kpi-sub">Clientes y administradores</div>
-  </article>
-  <article class="kpi">
-    <div class="kpi-top"><span class="kpi-icon ok"><i class="fas fa-user-check"></i></span> Activos</div>
-    <div class="kpi-value">{{ conteo.activos }}</div>
-    <div class="kpi-sub">Pueden iniciar sesión</div>
-  </article>
-  <article class="kpi">
-    <div class="kpi-top"><span class="kpi-icon"><i class="fas fa-user-slash"></i></span> Inactivos</div>
-    <div class="kpi-value">{{ conteo.inactivos }}</div>
-    <div class="kpi-sub">Acceso bloqueado</div>
-  </article>
-  <article class="kpi">
-    <div class="kpi-top"><span class="kpi-icon {% if conteo.sin_link %}warn{% else %}ok{% endif %}"><i class="fas fa-link-slash"></i></span> Sin link Wecon</div>
-    <div class="kpi-value">{{ conteo.sin_link }}</div>
-    <div class="kpi-sub">{% if conteo.sin_link %}Pendientes de configurar{% else %}Todos configurados{% endif %}</div>
-  </article>
-</section>
-
-<!-- ============================== Clientes ============================== -->
-<section id="clientes" class="section card">
+<section id="clientes" class="card">
   <div class="card-head">
     <div>
       <h2><i class="fas fa-users"></i> Clientes</h2>
@@ -54,7 +24,7 @@
     </div>
   </div>
 
-  <form method="get" class="toolbar" action="#clientes">
+  <form method="get" class="toolbar">
     <div class="search">
       <i class="fas fa-magnifying-glass"></i>
       <input type="search" name="q" class="input" value="{{ q }}" placeholder="Buscar por usuario o email…" aria-label="Buscar">
@@ -69,10 +39,9 @@
       <option value="activos" {% if status_filter == "activos" %}selected{% endif %}>Activos</option>
       <option value="inactivos" {% if status_filter == "inactivos" %}selected{% endif %}>Inactivos</option>
     </select>
-    {% if selected_user_id %}<input type="hidden" name="selected_user" value="{{ selected_user_id }}">{% endif %}
     <button class="btn" type="submit"><i class="fas fa-filter"></i> Filtrar</button>
     {% if q or role_filter or status_filter %}
-      <a class="btn btn-ghost" href="{% url 'admin_dashboard' %}"><i class="fas fa-xmark"></i> Limpiar</a>
+      <a class="btn btn-ghost" href="{% url 'usuarios_lista' %}"><i class="fas fa-xmark"></i> Limpiar</a>
     {% endif %}
   </form>
 
@@ -131,7 +100,7 @@
             <td class="shrink">
               <div class="row-actions">
                 <a class="btn btn-sm btn-icon btn-ghost" title="Ver consumo"
-                   href="?{{ filtros_qs }}selected_user={{ u.id }}#consumo"><i class="fas fa-chart-column"></i></a>
+                   href="{% url 'admin_consumo' %}?selected_user={{ u.id }}"><i class="fas fa-chart-column"></i></a>
                 <button type="button" class="btn btn-sm btn-icon btn-ghost js-ver" data-id="{{ u.id }}" title="Ver detalle"><i class="fas fa-eye"></i></button>
                 <button type="button" class="btn btn-sm btn-icon btn-ghost js-editar" data-id="{{ u.id }}" title="Editar"><i class="fas fa-pen"></i></button>
                 <form action="{% url 'usuario_eliminar' pk=u.id %}" method="post"
@@ -154,7 +123,7 @@
     <span>{{ page_obj.start_index }}–{{ page_obj.end_index }} de {{ paginator.count }}</span>
     <div class="pages">
       {% if page_obj.has_previous %}
-        <a class="btn btn-sm btn-icon" href="?{{ filtros_qs }}page={{ page_obj.previous_page_number }}#clientes" aria-label="Anterior"><i class="fas fa-chevron-left"></i></a>
+        <a class="btn btn-sm btn-icon" href="?{{ filtros_qs }}page={{ page_obj.previous_page_number }}" aria-label="Anterior"><i class="fas fa-chevron-left"></i></a>
       {% else %}
         <span class="btn btn-sm btn-icon is-disabled"><i class="fas fa-chevron-left"></i></span>
       {% endif %}
@@ -162,13 +131,13 @@
         {% if num == page_obj.number %}
           <span class="btn btn-sm btn-icon is-active" aria-current="page">{{ num }}</span>
         {% elif num == 1 or num == paginator.num_pages or num >= page_obj.number|add:"-1" and num <= page_obj.number|add:"1" %}
-          <a class="btn btn-sm btn-icon" href="?{{ filtros_qs }}page={{ num }}#clientes">{{ num }}</a>
+          <a class="btn btn-sm btn-icon" href="?{{ filtros_qs }}page={{ num }}">{{ num }}</a>
         {% elif num == page_obj.number|add:"-2" or num == page_obj.number|add:"2" %}
           <span class="muted">…</span>
         {% endif %}
       {% endfor %}
       {% if page_obj.has_next %}
-        <a class="btn btn-sm btn-icon" href="?{{ filtros_qs }}page={{ page_obj.next_page_number }}#clientes" aria-label="Siguiente"><i class="fas fa-chevron-right"></i></a>
+        <a class="btn btn-sm btn-icon" href="?{{ filtros_qs }}page={{ page_obj.next_page_number }}" aria-label="Siguiente"><i class="fas fa-chevron-right"></i></a>
       {% else %}
         <span class="btn btn-sm btn-icon is-disabled"><i class="fas fa-chevron-right"></i></span>
       {% endif %}
@@ -176,122 +145,6 @@
   </nav>
   {% endif %}
 </section>
-
-<!-- =============================== Consumo =============================== -->
-<section id="consumo" class="section card">
-  <div class="card-head">
-    <div>
-      <h2><i class="fas fa-chart-line"></i>
-        Consumo {{ chart_data.years.prev }} vs {{ chart_data.years.now }}
-      </h2>
-      <p class="sub">
-        {% if selected_user %}Cliente <strong>{{ selected_user.username }}</strong>
-        {% else %}Todos los clientes · tabla de calderas{% endif %}
-      </p>
-    </div>
-    <form method="get" action="#consumo" class="row" id="formCliente">
-      {% for clave, valor in request.GET.items %}
-        {% if clave != "selected_user" %}<input type="hidden" name="{{ clave }}" value="{{ valor }}">{% endif %}
-      {% endfor %}
-      <label class="sr-only" for="filtroUsuario">Cliente</label>
-      <select id="filtroUsuario" name="selected_user" class="input">
-        <option value="">Todos los clientes</option>
-        {% for u in users_for_filter %}
-          <option value="{{ u.id }}" {% if selected_user.id == u.id %}selected{% endif %}>{{ u.username }}</option>
-        {% endfor %}
-      </select>
-      <noscript><button class="btn" type="submit">Ver</button></noscript>
-    </form>
-  </div>
-
-  <div class="card-body">
-    <div class="chart-grid">
-      <div>
-        <div class="chart-title"><h3><i class="fas fa-droplet water"></i> Agua (m³)</h3><span class="total" id="totalAgua"></span></div>
-        <div class="chart-box"><canvas id="graficoAgua" aria-label="Gráfico de consumo de agua"></canvas></div>
-      </div>
-      <div>
-        <div class="chart-title"><h3><i class="fas fa-fire-flame-simple gas"></i> Gas (m³)</h3><span class="total" id="totalGas"></span></div>
-        <div class="chart-box"><canvas id="graficoGas" aria-label="Gráfico de consumo de gas"></canvas></div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<div class="layout-split">
-  <section class="card">
-    <div class="card-head">
-      <div>
-        <h2><i class="fas fa-plus"></i> Registrar consumo</h2>
-        <p class="sub">Si el mes ya existe, solo cambian los campos que completes</p>
-      </div>
-    </div>
-    <form method="post" class="card-body stack-sm" novalidate>
-      {% csrf_token %}
-      {% include "includes/form_errors.html" with form=admin_form %}
-      <div class="form-grid cols-2">
-        {% include "includes/field.html" with field=admin_form.user clase="span-all" %}
-        {% include "includes/field.html" with field=admin_form.month_choice %}
-        {% include "includes/field.html" with field=admin_form.year %}
-        {% include "includes/field.html" with field=admin_form.m3_water %}
-        {% include "includes/field.html" with field=admin_form.m3_gas %}
-        {% include "includes/field.html" with field=admin_form.cost %}
-        {% include "includes/field.html" with field=admin_form.day opcional=True %}
-      </div>
-      <button type="submit" class="btn btn-primary btn-block"><i class="fas fa-floppy-disk"></i> Guardar registro</button>
-    </form>
-  </section>
-
-  <section class="card">
-    <div class="card-head">
-      <div>
-        <h2><i class="fas fa-table-list"></i> Registros</h2>
-        <p class="sub">{% if selected_user %}de {{ selected_user.username }}{% else %}Elige un cliente para ver sus registros{% endif %}</p>
-      </div>
-      {% if years_in_rows|length > 1 %}
-        <div class="tabs" data-tabs="registros" role="tablist">
-          {% for y in years_in_rows %}
-            <button type="button" class="tab {% if forloop.first %}is-active{% endif %}" data-valor="{{ y }}">{{ y }}</button>
-          {% endfor %}
-          <button type="button" class="tab" data-valor="">Todo</button>
-        </div>
-      {% endif %}
-    </div>
-
-    {% if totals.total_water or totals.total_gas or totals.total_cost %}
-      <div class="card-body tight row">
-        <span class="chip"><i class="fas fa-droplet water"></i> Agua {{ year_now_tbl }} <strong>{{ totals.total_water|floatformat:"1g"|default:"—" }} m³</strong></span>
-        <span class="chip"><i class="fas fa-fire-flame-simple gas"></i> Gas {{ year_now_tbl }} <strong>{{ totals.total_gas|floatformat:"1g"|default:"—" }} m³</strong></span>
-        <span class="chip"><i class="fas fa-sack-dollar cost"></i> Costo <strong>{% if totals.total_cost %}${{ totals.total_cost|floatformat:"0g" }}{% else %}—{% endif %}</strong></span>
-      </div>
-    {% endif %}
-
-    <div class="table-wrap">
-      <table class="table compact">
-        <thead>
-          <tr><th>Mes</th><th class="num">Agua (m³)</th><th class="num">Gas (m³)</th><th class="num">Costo (CLP)</th></tr>
-        </thead>
-        <tbody data-tabla="registros">
-          {% for r in rows %}
-            <tr data-valor="{{ r.year }}">
-              <td><span class="strong">{{ r.month_label }}</span> <span class="muted">{{ r.year }}</span></td>
-              <td class="num">{{ r.m3_water|floatformat:"2g"|default:"—" }}</td>
-              <td class="num">{{ r.m3_gas|floatformat:"2g"|default:"—" }}</td>
-              <td class="num">{% if r.cost is not None %}${{ r.cost|floatformat:"0g" }}{% else %}—{% endif %}</td>
-            </tr>
-          {% empty %}
-            <tr>
-              <td colspan="4" class="empty">
-                <i class="fas fa-inbox"></i>
-                {% if selected_user %}Este cliente aún no tiene registros.{% else %}Selecciona un cliente arriba para ver sus registros.{% endif %}
-              </td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </section>
-</div>
 
 <!-- ============================ Modal: detalle ============================ -->
 <div id="modalDetalle" class="modal" aria-hidden="true">
@@ -393,11 +246,8 @@
 </div>
 
 {{ fichas|json_script:"fichas-usuarios" }}
-{{ chart_data|json_script:"datos-graficos" }}
 {% endblock %}
 
 {% block scripts %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<script src="{% static 'js/graficos.js' %}"></script>
-<script src="{% static 'js/admin.js' %}"></script>
+<script src="{% static 'js/clientes.js' %}"></script>
 {% endblock %}

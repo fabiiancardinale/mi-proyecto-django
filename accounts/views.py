@@ -184,7 +184,19 @@ def _conteo_usuarios() -> dict:
 
 @admin_required
 def admin_dashboard(request: HttpRequest) -> HttpResponse:
-    """Panel de administracion: usuarios, comparativas y alta de consumo."""
+    """Pagina principal del administrador: solo metricas y resumenes."""
+    # Enlaces antiguos apuntaban a secciones de esta pagina (?q=..., ?selected_user=...).
+    if request.GET.get("selected_user"):
+        return redirect(f"{reverse('admin_consumo')}?{request.GET.urlencode()}")
+    if any(request.GET.get(k) for k in ("q", "role", "status", "page")):
+        return redirect(f"{reverse('usuarios_lista')}?{request.GET.urlencode()}")
+
+    return render(request, "admin/panel.html", {"r": services.resumen_panel()})
+
+
+@admin_required
+def admin_consumo(request: HttpRequest) -> HttpResponse:
+    """Graficos por cliente, alta de consumo y registros."""
     hoy = timezone.localdate()
     anio_actual, anio_previo = hoy.year, hoy.year - 1
 
@@ -211,7 +223,7 @@ def admin_dashboard(request: HttpRequest) -> HttpResponse:
                     f"Consumo guardado para {registro.user.username} "
                     f"({registro.month_label} {registro.year}).",
                 )
-                return redirect(f"{request.path}?selected_user={registro.user_id}#consumo")
+                return redirect(f"{request.path}?selected_user={registro.user_id}")
         else:
             messages.error(request, "Revisa los datos del formulario.")
 
@@ -235,40 +247,15 @@ def admin_dashboard(request: HttpRequest) -> HttpResponse:
             anio_tabla = filas[0].year if filas else None
             totales = services.resumen_anual(usuario_sel, anio_tabla)
 
-    # ---- Listado de usuarios ----
-    usuarios, texto, rol, estado = _filtros_de_usuarios(request)
-    paginador = Paginator(usuarios, 10)
-    pagina = paginador.get_page(request.GET.get("page"))
-
-    # Filtros serializados para que la paginacion no los pierda.
-    filtros = QueryDict(mutable=True)
-    for clave, valor in (("q", texto), ("role", rol), ("status", estado)):
-        if valor:
-            filtros[clave] = valor
-    if selected_user_id:
-        filtros["selected_user"] = selected_user_id
-    filtros_qs = filtros.urlencode()
-    if filtros_qs:
-        filtros_qs += "&"
-
-    return render(request, "admin_dashboard.html", {
+    return render(request, "admin/consumo.html", {
         "chart_data": chart_data,
         "admin_form": admin_form,
-        "selected_user_id": selected_user_id,
         "selected_user": usuario_sel,
         "rows": filas,
         "years_in_rows": sorted({f.year for f in filas}, reverse=True),
         "year_now_tbl": anio_tabla,
         "totals": totales,
         "users_for_filter": User.objects.order_by("username").only("id", "username"),
-        "page_obj": pagina,
-        "paginator": paginador,
-        "fichas": {u.id: _ficha_usuario(u) for u in pagina},
-        "q": texto,
-        "role_filter": rol,
-        "status_filter": estado,
-        "filtros_qs": filtros_qs,
-        "conteo": _conteo_usuarios(),
     })
 
 
@@ -398,7 +385,7 @@ def create_user(request: HttpRequest) -> HttpResponse:
                 ProfileForm(request.POST, instance=perfil).save()
 
             messages.success(request, f"Usuario '{usuario.username}' creado correctamente.")
-            return redirect("admin_dashboard")
+            return redirect("usuarios_lista")
 
         messages.error(request, "Revisa los campos, hay errores en el formulario.")
     else:
@@ -456,7 +443,7 @@ def eliminar_usuario(request: HttpRequest, pk: int) -> HttpResponse:
 
     if usuario == request.user:
         messages.error(request, "No puedes eliminar tu propia cuenta.")
-        return redirect("admin_dashboard")
+        return redirect("usuarios_lista")
 
     nombre = usuario.username
     try:
@@ -468,17 +455,35 @@ def eliminar_usuario(request: HttpRequest, pk: int) -> HttpResponse:
             "No se puede eliminar: tiene registros asociados "
             "(protegido por integridad referencial).",
         )
-    return redirect("admin_dashboard")
+    return redirect("usuarios_lista")
 
 
 @admin_required
 def lista_usuarios(request: HttpRequest) -> HttpResponse:
-    """El listado con filtros y paginacion vive en el panel de admin.
+    """Listado de clientes con busqueda, filtros, paginacion y edicion."""
+    usuarios, texto, rol, estado = _filtros_de_usuarios(request)
+    paginador = Paginator(usuarios, 15)
+    pagina = paginador.get_page(request.GET.get("page"))
 
-    Esta ruta apuntaba a una plantilla inexistente. Se mantiene para no romper
-    enlaces guardados.
-    """
-    return redirect(f"{reverse('admin_dashboard')}#usuarios")
+    # Filtros serializados para que la paginacion no los pierda.
+    filtros = QueryDict(mutable=True)
+    for clave, valor in (("q", texto), ("role", rol), ("status", estado)):
+        if valor:
+            filtros[clave] = valor
+    filtros_qs = filtros.urlencode()
+    if filtros_qs:
+        filtros_qs += "&"
+
+    return render(request, "admin/clientes.html", {
+        "page_obj": pagina,
+        "paginator": paginador,
+        "fichas": {u.id: _ficha_usuario(u) for u in pagina},
+        "q": texto,
+        "role_filter": rol,
+        "status_filter": estado,
+        "filtros_qs": filtros_qs,
+        "conteo": _conteo_usuarios(),
+    })
 
 
 # =============================================================================

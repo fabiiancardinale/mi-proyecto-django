@@ -314,18 +314,18 @@ class FiltroDeUsuariosTest(TestCase):
 
     def test_filtro_por_rol_funciona(self):
         # Antes comparaba contra "Administrador" y siempre devolvía cero.
-        cuerpo = self._usuarios_en_tabla(self.client.get("/panel/admin/?role=user"))
+        cuerpo = self._usuarios_en_tabla(self.client.get("/usuarios/?role=user"))
         self.assertIn("farmacia", cuerpo)
         self.assertNotIn(">jefe<", cuerpo)
 
     def test_busqueda_por_texto(self):
-        cuerpo = self._usuarios_en_tabla(self.client.get("/panel/admin/?q=farma"))
+        cuerpo = self._usuarios_en_tabla(self.client.get("/usuarios/?q=farma"))
         self.assertIn("farmacia", cuerpo)
         self.assertNotIn(">jefe<", cuerpo)
 
     def test_filtro_por_estado(self):
         User.objects.filter(username="farmacia").update(is_active=False)
-        cuerpo = self._usuarios_en_tabla(self.client.get("/panel/admin/?status=inactivos"))
+        cuerpo = self._usuarios_en_tabla(self.client.get("/usuarios/?status=inactivos"))
         self.assertIn("farmacia", cuerpo)
 
 
@@ -534,7 +534,7 @@ class AltaDeConsumoAdminTest(TestCase):
         self.client.force_login(self.admin)
 
     def test_alta_por_formulario(self):
-        self.client.post(reverse("admin_dashboard"), {
+        self.client.post(reverse("admin_consumo"), {
             "user": self.cliente.id, "year": "2025", "month_choice": "jul",
             "m3_water": "99.9", "m3_gas": "55.5", "cost": "300000",
         })
@@ -609,11 +609,11 @@ class RutasTest(TestCase):
     def setUp(self):
         self.admin = User.objects.create_user("jefe", password="x", role="admin")
 
-    def test_listado_de_usuarios_redirige(self):
-        # Apuntaba a una plantilla inexistente y daba TemplateDoesNotExist.
+    def test_listado_de_usuarios_es_su_propia_pagina(self):
         self.client.force_login(self.admin)
         respuesta = self.client.get(reverse("usuarios_lista"))
-        self.assertEqual(respuesta.status_code, 302)
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertTemplateUsed(respuesta, "admin/clientes.html")
 
     def test_home_redirige_segun_rol(self):
         self.client.force_login(self.admin)
@@ -801,3 +801,106 @@ class ApiAdministracionTest(TestCase):
         self.assertEqual(r.status_code, 204)
         self.assertFalse(User.objects.filter(username="hotel").exists())
         self.assertFalse(GasConsumption.objects.exists())
+
+
+class PaginasAdminSeparadasTest(TestCase):
+    """Panel, Clientes y Consumo son páginas distintas con el mismo menú."""
+
+    def setUp(self):
+        self.admin = User.objects.create_user("jefe", password="x", role="admin")
+        self.cliente = User.objects.create_user("farmacia", "f@e.cl", "x", role="user")
+        self.client.force_login(self.admin)
+
+    def test_el_menu_aparece_completo_en_todas_las_paginas(self):
+        enlaces = [reverse(n) for n in ("admin_dashboard", "usuarios_lista", "admin_consumo")]
+        for nombre in ("admin_dashboard", "usuarios_lista", "admin_consumo", "create_user"):
+            with self.subTest(pagina=nombre):
+                html = self.client.get(reverse(nombre)).content.decode()
+                for enlace in enlaces:
+                    self.assertIn(f'href="{enlace}"', html)
+
+    def test_marca_como_activa_la_pagina_actual(self):
+        html = self.client.get(reverse("create_user")).content.decode()
+        self.assertIn(f'href="{reverse("usuarios_lista")}" class="nav-item is-active"', html)
+
+    def test_el_panel_solo_muestra_resumenes(self):
+        respuesta = self.client.get(reverse("admin_dashboard"))
+        self.assertTemplateUsed(respuesta, "admin/panel.html")
+        self.assertContains(respuesta, 'data-widget="consumo"')
+        self.assertNotContains(respuesta, 'id="formEditar"')
+        self.assertNotContains(respuesta, 'name="m3_water"')
+
+    def test_enlaces_antiguos_del_panel_redirigen(self):
+        r = self.client.get(reverse("admin_dashboard") + f"?selected_user={self.cliente.id}")
+        self.assertRedirects(r, reverse("admin_consumo") + f"?selected_user={self.cliente.id}")
+        r = self.client.get(reverse("admin_dashboard") + "?q=farma")
+        self.assertRedirects(r, reverse("usuarios_lista") + "?q=farma")
+
+    def test_consumo_muestra_el_cliente_elegido(self):
+        services.registrar_consumo(user=self.cliente, year=2025, month="mar", m3_gas=7)
+        r = self.client.get(reverse("admin_consumo") + f"?selected_user={self.cliente.id}")
+        self.assertTemplateUsed(r, "admin/consumo.html")
+        self.assertContains(r, "de farmacia")
+
+    def test_crear_cliente_vuelve_al_listado(self):
+        r = self.client.post(reverse("create_user"), {
+            "username": "hotel", "email": "h@e.cl", "role": "user",
+            "password1": "Clave-segura-123", "password2": "Clave-segura-123",
+            "maintenance_interval_months": 12,
+        })
+        self.assertRedirects(r, reverse("usuarios_lista"))
+
+    def test_cliente_no_entra_a_las_paginas_admin(self):
+        self.client.force_login(self.cliente)
+        for nombre in ("usuarios_lista", "admin_consumo"):
+            with self.subTest(pagina=nombre):
+                self.assertRedirects(self.client.get(reverse(nombre)), reverse("user_dashboard"))
+
+
+class ResumenPanelTest(TestCase):
+    def setUp(self):
+        self.hoy = datetime.date(2026, 3, 15)
+        self.a = User.objects.create_user("a", password="x", role="user")
+        self.b = User.objects.create_user("b", password="x", role="user")
+        User.objects.create_user("jefe", password="x", role="admin")
+
+    def test_compara_contra_el_mismo_periodo_del_anio_anterior(self):
+        services.registrar_consumo(user=self.a, year=2026, month="feb", m3_gas=120)
+        services.registrar_consumo(user=self.a, year=2025, month="feb", m3_gas=100)
+        # Diciembre del año anterior queda fuera del periodo ene–mar.
+        services.registrar_consumo(user=self.a, year=2025, month="dic", m3_gas=900)
+        r = services.resumen_panel(self.hoy)
+        self.assertEqual(r["consumo"]["gas"]["actual"], 120.0)
+        self.assertEqual(r["consumo"]["gas"]["anterior"], 100.0)
+        self.assertEqual(r["consumo"]["gas"]["variacion"], 20.0)
+        self.assertIsNone(r["consumo"]["agua"]["variacion"])
+
+    def test_clientes_pendientes_del_mes(self):
+        services.registrar_consumo(user=self.a, year=2026, month="mar", m3_gas=1)
+        r = services.resumen_panel(self.hoy)
+        self.assertEqual(r["clientes"]["total"], 2)
+        self.assertEqual(r["clientes"]["admins"], 1)
+        self.assertEqual(r["reportados"], 1)
+        self.assertEqual([u.username for u in r["sin_registro"]], ["b"])
+
+    def test_ranking_y_sin_link(self):
+        services.registrar_consumo(user=self.a, year=2026, month="ene", m3_gas=10)
+        services.registrar_consumo(user=self.b, year=2026, month="ene", m3_gas=40)
+        Profile.objects.filter(user=self.b).update(link="https://wecon.example/b")
+        r = services.resumen_panel(self.hoy)
+        self.assertEqual([f["user__username"] for f in r["ranking"]], ["b", "a"])
+        self.assertEqual(r["ranking"][0]["pct"], 100)
+        self.assertEqual([u.username for u in r["sin_link"]], ["a"])
+
+    def test_mantenciones_vencidas_y_proximas(self):
+        Profile.objects.filter(user=self.a).update(next_maintenance=datetime.date(2026, 3, 1))
+        Profile.objects.filter(user=self.b).update(next_maintenance=datetime.date(2026, 4, 1))
+        r = services.resumen_panel(self.hoy)
+        self.assertEqual(r["mantencion_vencidas"], 1)
+        self.assertEqual(r["mantencion_proximas"], 1)
+
+    def test_sin_datos_no_falla(self):
+        User.objects.all().delete()
+        r = services.resumen_panel(self.hoy)
+        self.assertEqual(r["reportados"], 0)
+        self.assertEqual(r["ranking"], [])

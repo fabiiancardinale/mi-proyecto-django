@@ -1,0 +1,248 @@
+{% extends "layouts/app.html" %}
+{% load static %}
+
+{% block title %}Panel{% endblock %}
+
+{% block content %}
+{% with c=r.consumo %}
+
+<header class="page-head">
+  <div>
+    <div class="eyebrow"><i class="fas fa-shield-halved"></i> Administración</div>
+    <h1>Panel</h1>
+    <p class="sub">Resumen {{ r.periodo }} {{ r.anio }}, comparado con el mismo periodo de {{ r.anio_previo }}.</p>
+  </div>
+  <div class="actions">
+    <button type="button" class="btn btn-ghost" data-widgets="abrir"><i class="fas fa-up-right-and-down-left-from-center"></i> Expandir todo</button>
+    <button type="button" class="btn btn-ghost" data-widgets="cerrar"><i class="fas fa-down-left-and-up-right-to-center"></i> Contraer todo</button>
+  </div>
+</header>
+
+<!-- ============================ Indicadores ============================ -->
+<section class="kpi-grid" aria-label="Indicadores">
+  <a class="kpi kpi-link" href="{% url 'usuarios_lista' %}?status=activos">
+    <div class="kpi-top"><span class="kpi-icon info"><i class="fas fa-users"></i></span> Clientes activos</div>
+    <div class="kpi-value">{{ r.clientes.activos }}<span class="unit">de {{ r.clientes.total }}</span></div>
+    <div class="kpi-sub">{% if r.clientes.inactivos %}{{ r.clientes.inactivos }} con acceso bloqueado{% else %}Ninguno bloqueado{% endif %}</div>
+  </a>
+  <article class="kpi">
+    <div class="kpi-top"><span class="kpi-icon water"><i class="fas fa-droplet"></i></span> Agua {{ r.anio }}</div>
+    <div class="kpi-value">{{ c.agua.actual|floatformat:"0g" }}<span class="unit">m³</span></div>
+    <div class="kpi-sub">{% include "includes/delta.html" with pct=c.agua.variacion %} vs {{ r.anio_previo }}</div>
+  </article>
+  <article class="kpi">
+    <div class="kpi-top"><span class="kpi-icon gas"><i class="fas fa-fire-flame-simple"></i></span> Gas {{ r.anio }}</div>
+    <div class="kpi-value">{{ c.gas.actual|floatformat:"0g" }}<span class="unit">m³</span></div>
+    <div class="kpi-sub">{% include "includes/delta.html" with pct=c.gas.variacion %} vs {{ r.anio_previo }}</div>
+  </article>
+  <article class="kpi">
+    <div class="kpi-top"><span class="kpi-icon cost"><i class="fas fa-sack-dollar"></i></span> Costo {{ r.anio }}</div>
+    <div class="kpi-value">${{ c.costo.actual|floatformat:"0g" }}</div>
+    <div class="kpi-sub">{% include "includes/delta.html" with pct=c.costo.variacion %} vs {{ r.anio_previo }}</div>
+  </article>
+</section>
+
+<!-- ============================ Tarjetas ============================ -->
+<div class="widgets">
+
+  <!-- Consumo mensual -->
+  <details class="widget widget-wide" data-widget="consumo" data-abierto>
+    <summary class="widget-head">
+      <span class="kpi-icon info"><i class="fas fa-chart-line"></i></span>
+      <span class="widget-title"><strong>Consumo mensual</strong><small>Suma de todos los clientes · {{ r.anio_previo }} vs {{ r.anio }}</small></span>
+      <span class="widget-value small">
+        <span><i class="fas fa-droplet water"></i> {{ c.agua.actual|floatformat:"0g" }} m³</span>
+        <span><i class="fas fa-fire-flame-simple gas"></i> {{ c.gas.actual|floatformat:"0g" }} m³</span>
+      </span>
+      <i class="fas fa-chevron-down widget-chev" aria-hidden="true"></i>
+    </summary>
+    <div class="widget-body">
+      <div class="chart-grid">
+        <div>
+          <div class="chart-title"><h3><i class="fas fa-droplet water"></i> Agua (m³)</h3></div>
+          <div class="chart-box"><canvas id="panelAgua" aria-label="Consumo mensual de agua"></canvas></div>
+        </div>
+        <div>
+          <div class="chart-title"><h3><i class="fas fa-fire-flame-simple gas"></i> Gas (m³)</h3></div>
+          <div class="chart-box"><canvas id="panelGas" aria-label="Consumo mensual de gas"></canvas></div>
+        </div>
+      </div>
+      <div class="widget-foot"><a href="{% url 'admin_consumo' %}">Ver consumo por cliente <i class="fas fa-arrow-right"></i></a></div>
+    </div>
+  </details>
+
+  <!-- Registros del mes -->
+  <details class="widget" data-widget="registros" data-abierto>
+    <summary class="widget-head">
+      <span class="kpi-icon {% if r.sin_registro %}warn{% else %}ok{% endif %}"><i class="fas fa-clipboard-check"></i></span>
+      <span class="widget-title"><strong>Registros de {{ r.mes_actual|lower }}</strong><small>Clientes activos que ya cargaron su consumo</small></span>
+      <span class="widget-value">{{ r.reportados }}<span class="unit">/ {{ r.clientes.activos }}</span></span>
+      <i class="fas fa-chevron-down widget-chev" aria-hidden="true"></i>
+    </summary>
+    <div class="widget-body">
+      <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="{{ r.clientes.activos }}" aria-valuenow="{{ r.reportados }}">
+        <span style="width: {% widthratio r.reportados r.clientes.activos|default:1 100 %}%"></span>
+      </div>
+      {% if r.sin_registro %}
+        <p class="small muted">Faltan {{ r.sin_registro|length }}:</p>
+        <ul class="mini-list">
+          {% for u in r.sin_registro|slice:":8" %}
+            <li>
+              <span class="avatar sm">{{ u.username|slice:":1"|upper }}</span>
+              <span class="grow">{{ u.username }}<small>{{ u.profile.location|default:"Sin ubicación" }}</small></span>
+              <a class="btn btn-sm btn-ghost" href="{% url 'admin_consumo' %}?selected_user={{ u.id }}">Registrar</a>
+            </li>
+          {% endfor %}
+        </ul>
+        {% if r.sin_registro|length > 8 %}<p class="small muted">y {{ r.sin_registro|length|add:"-8" }} más.</p>{% endif %}
+      {% else %}
+        <div class="empty-state"><i class="fas fa-circle-check"></i>Todos los clientes activos registraron {{ r.mes_actual|lower }}.</div>
+      {% endif %}
+    </div>
+  </details>
+
+  <!-- Mantenciones -->
+  <details class="widget" data-widget="mantencion">
+    <summary class="widget-head">
+      <span class="kpi-icon {% if r.mantencion_vencidas %}danger{% elif r.mantencion_proximas %}warn{% else %}ok{% endif %}"><i class="fas fa-screwdriver-wrench"></i></span>
+      <span class="widget-title"><strong>Mantenciones</strong><small>Vencidas: {{ r.mantencion_vencidas }} · próximos 30 días: {{ r.mantencion_proximas }}</small></span>
+      <span class="widget-value">{{ r.mantencion|length }}</span>
+      <i class="fas fa-chevron-down widget-chev" aria-hidden="true"></i>
+    </summary>
+    <div class="widget-body">
+      {% if r.mantencion %}
+        <ul class="mini-list">
+          {% for u in r.mantencion %}
+            <li>
+              <span class="avatar sm">{{ u.username|slice:":1"|upper }}</span>
+              <span class="grow">{{ u.username }}<small>{{ u.profile.next_maintenance|date:"d/m/Y" }}</small></span>
+              {% with d=u.profile.days_to_next_maintenance %}
+                {% if d < 0 %}<span class="badge badge-danger">Vencida hace {{ d|stringformat:"d"|cut:"-" }} d</span>
+                {% elif d == 0 %}<span class="badge badge-warn">Hoy</span>
+                {% else %}<span class="badge badge-warn">En {{ d }} d</span>{% endif %}
+              {% endwith %}
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="empty-state"><i class="fas fa-circle-check"></i>No hay mantenciones vencidas ni próximas.</div>
+      {% endif %}
+    </div>
+  </details>
+
+  <!-- Sin link Wecon -->
+  <details class="widget" data-widget="sin_link">
+    <summary class="widget-head">
+      <span class="kpi-icon {% if r.sin_link %}warn{% else %}ok{% endif %}"><i class="fas fa-link-slash"></i></span>
+      <span class="widget-title"><strong>Sin link Wecon</strong><small>Clientes activos que no pueden ver su caldera</small></span>
+      <span class="widget-value">{{ r.sin_link|length }}</span>
+      <i class="fas fa-chevron-down widget-chev" aria-hidden="true"></i>
+    </summary>
+    <div class="widget-body">
+      {% if r.sin_link %}
+        <ul class="mini-list">
+          {% for u in r.sin_link|slice:":10" %}
+            <li>
+              <span class="avatar sm">{{ u.username|slice:":1"|upper }}</span>
+              <span class="grow">{{ u.username }}<small>{{ u.profile.location|default:"Sin ubicación" }}</small></span>
+              <a class="btn btn-sm btn-ghost" href="{% url 'usuarios_lista' %}?q={{ u.username|urlencode }}">Configurar</a>
+            </li>
+          {% endfor %}
+        </ul>
+        {% if r.sin_link|length > 10 %}<p class="small muted">y {{ r.sin_link|length|add:"-10" }} más.</p>{% endif %}
+      {% else %}
+        <div class="empty-state"><i class="fas fa-circle-check"></i>Todos los clientes tienen su link configurado.</div>
+      {% endif %}
+    </div>
+  </details>
+
+  <!-- Ranking -->
+  <details class="widget" data-widget="ranking">
+    <summary class="widget-head">
+      <span class="kpi-icon gas"><i class="fas fa-ranking-star"></i></span>
+      <span class="widget-title"><strong>Mayor consumo de gas</strong><small>Top 5 de {{ r.anio }}</small></span>
+      <span class="widget-value small">{% if r.ranking %}{{ r.ranking.0.user__username }}{% else %}—{% endif %}</span>
+      <i class="fas fa-chevron-down widget-chev" aria-hidden="true"></i>
+    </summary>
+    <div class="widget-body">
+      {% if r.ranking %}
+        <ol class="rank">
+          {% for f in r.ranking %}
+            <li>
+              <div class="row-between">
+                <a href="{% url 'admin_consumo' %}?selected_user={{ f.user_id }}" class="strong">{{ f.user__username }}</a>
+                <span class="small muted num">{{ f.gas|floatformat:"0g" }} m³ gas · {{ f.agua|floatformat:"0g" }} m³ agua</span>
+              </div>
+              <div class="bar"><span style="width: {{ f.pct }}%"></span></div>
+            </li>
+          {% endfor %}
+        </ol>
+      {% else %}
+        <div class="empty-state"><i class="fas fa-inbox"></i>Aún no hay consumo registrado en {{ r.anio }}.</div>
+      {% endif %}
+    </div>
+  </details>
+
+  <!-- Últimos registros -->
+  <details class="widget" data-widget="ultimos">
+    <summary class="widget-head">
+      <span class="kpi-icon"><i class="fas fa-clock-rotate-left"></i></span>
+      <span class="widget-title"><strong>Últimos registros</strong><small>Lo más reciente que se cargó</small></span>
+      <span class="widget-value small">{% if r.ultimos %}{{ r.ultimos.0.user.username }}{% else %}—{% endif %}</span>
+      <i class="fas fa-chevron-down widget-chev" aria-hidden="true"></i>
+    </summary>
+    <div class="widget-body flush">
+      {% if r.ultimos %}
+        <div class="table-wrap">
+          <table class="table compact">
+            <thead><tr><th>Cliente</th><th>Mes</th><th class="num">Agua</th><th class="num">Gas</th></tr></thead>
+            <tbody>
+              {% for g in r.ultimos %}
+                <tr>
+                  <td><a href="{% url 'admin_consumo' %}?selected_user={{ g.user_id }}">{{ g.user.username }}</a></td>
+                  <td>{{ g.month_label }} <span class="muted">{{ g.year }}</span></td>
+                  <td class="num">{{ g.m3_water|floatformat:"1g"|default:"—" }}</td>
+                  <td class="num">{{ g.m3_gas|floatformat:"1g"|default:"—" }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="empty-state"><i class="fas fa-inbox"></i>Todavía no hay registros.</div>
+      {% endif %}
+    </div>
+  </details>
+
+  <!-- Cuentas -->
+  <details class="widget" data-widget="cuentas">
+    <summary class="widget-head">
+      <span class="kpi-icon info"><i class="fas fa-id-card"></i></span>
+      <span class="widget-title"><strong>Cuentas</strong><small>Clientes y administradores</small></span>
+      <span class="widget-value">{{ r.clientes.total|add:r.clientes.admins }}</span>
+      <i class="fas fa-chevron-down widget-chev" aria-hidden="true"></i>
+    </summary>
+    <div class="widget-body">
+      <div class="kv-grid">
+        <div class="kv"><span class="k">Clientes activos</span><span class="v">{{ r.clientes.activos }}</span></div>
+        <div class="kv"><span class="k">Clientes inactivos</span><span class="v">{{ r.clientes.inactivos }}</span></div>
+        <div class="kv"><span class="k">Administradores</span><span class="v">{{ r.clientes.admins }}</span></div>
+      </div>
+      <div class="widget-foot row">
+        <a href="{% url 'usuarios_lista' %}">Ver clientes <i class="fas fa-arrow-right"></i></a>
+        <a href="{% url 'create_user' %}" class="btn btn-sm btn-primary ml-auto"><i class="fas fa-user-plus"></i> Nuevo cliente</a>
+      </div>
+    </div>
+  </details>
+
+</div>
+
+{{ r.grafico|json_script:"datos-panel" }}
+{% endwith %}
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="{% static 'js/graficos.js' %}"></script>
+<script src="{% static 'js/panel.js' %}"></script>
+{% endblock %}

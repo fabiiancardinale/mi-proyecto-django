@@ -1,0 +1,135 @@
+{% extends "layouts/app.html" %}
+{% load static %}
+
+{% block title %}Consumo{% endblock %}
+
+{% block content %}
+
+<header class="page-head">
+  <div>
+    <div class="eyebrow"><i class="fas fa-shield-halved"></i> Administración</div>
+    <h1>Consumo</h1>
+    <p class="sub">Comparativa por cliente, registro mensual e historial.</p>
+  </div>
+</header>
+
+<section id="consumo" class="card">
+  <div class="card-head">
+    <div>
+      <h2><i class="fas fa-chart-line"></i>
+        Consumo {{ chart_data.years.prev }} vs {{ chart_data.years.now }}
+      </h2>
+      <p class="sub">
+        {% if selected_user %}Cliente <strong>{{ selected_user.username }}</strong>
+        {% else %}Todos los clientes · tabla de calderas{% endif %}
+      </p>
+    </div>
+    <form method="get" class="row" id="formCliente">
+      <label class="sr-only" for="filtroUsuario">Cliente</label>
+      <select id="filtroUsuario" name="selected_user" class="input">
+        <option value="">Todos los clientes</option>
+        {% for u in users_for_filter %}
+          <option value="{{ u.id }}" {% if selected_user.id == u.id %}selected{% endif %}>{{ u.username }}</option>
+        {% endfor %}
+      </select>
+      <noscript><button class="btn" type="submit">Ver</button></noscript>
+    </form>
+  </div>
+
+  <div class="card-body">
+    <div class="chart-grid">
+      <div>
+        <div class="chart-title"><h3><i class="fas fa-droplet water"></i> Agua (m³)</h3><span class="total" id="totalAgua"></span></div>
+        <div class="chart-box"><canvas id="graficoAgua" aria-label="Gráfico de consumo de agua"></canvas></div>
+      </div>
+      <div>
+        <div class="chart-title"><h3><i class="fas fa-fire-flame-simple gas"></i> Gas (m³)</h3><span class="total" id="totalGas"></span></div>
+        <div class="chart-box"><canvas id="graficoGas" aria-label="Gráfico de consumo de gas"></canvas></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="layout-split">
+  <section class="card">
+    <div class="card-head">
+      <div>
+        <h2><i class="fas fa-plus"></i> Registrar consumo</h2>
+        <p class="sub">Si el mes ya existe, solo cambian los campos que completes</p>
+      </div>
+    </div>
+    <form method="post" class="card-body stack-sm" novalidate>
+      {% csrf_token %}
+      {% include "includes/form_errors.html" with form=admin_form %}
+      <div class="form-grid cols-2">
+        {% include "includes/field.html" with field=admin_form.user clase="span-all" %}
+        {% include "includes/field.html" with field=admin_form.month_choice %}
+        {% include "includes/field.html" with field=admin_form.year %}
+        {% include "includes/field.html" with field=admin_form.m3_water %}
+        {% include "includes/field.html" with field=admin_form.m3_gas %}
+        {% include "includes/field.html" with field=admin_form.cost %}
+        {% include "includes/field.html" with field=admin_form.day opcional=True %}
+      </div>
+      <button type="submit" class="btn btn-primary btn-block"><i class="fas fa-floppy-disk"></i> Guardar registro</button>
+    </form>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <div>
+        <h2><i class="fas fa-table-list"></i> Registros</h2>
+        <p class="sub">{% if selected_user %}de {{ selected_user.username }}{% else %}Elige un cliente para ver sus registros{% endif %}</p>
+      </div>
+      {% if years_in_rows|length > 1 %}
+        <div class="tabs" data-tabs="registros" role="tablist">
+          {% for y in years_in_rows %}
+            <button type="button" class="tab {% if forloop.first %}is-active{% endif %}" data-valor="{{ y }}">{{ y }}</button>
+          {% endfor %}
+          <button type="button" class="tab" data-valor="">Todo</button>
+        </div>
+      {% endif %}
+    </div>
+
+    {% if totals.total_water or totals.total_gas or totals.total_cost %}
+      <div class="card-body tight row">
+        <span class="chip"><i class="fas fa-droplet water"></i> Agua {{ year_now_tbl }} <strong>{{ totals.total_water|floatformat:"1g"|default:"—" }} m³</strong></span>
+        <span class="chip"><i class="fas fa-fire-flame-simple gas"></i> Gas {{ year_now_tbl }} <strong>{{ totals.total_gas|floatformat:"1g"|default:"—" }} m³</strong></span>
+        <span class="chip"><i class="fas fa-sack-dollar cost"></i> Costo <strong>{% if totals.total_cost %}${{ totals.total_cost|floatformat:"0g" }}{% else %}—{% endif %}</strong></span>
+      </div>
+    {% endif %}
+
+    <div class="table-wrap">
+      <table class="table compact">
+        <thead>
+          <tr><th>Mes</th><th class="num">Agua (m³)</th><th class="num">Gas (m³)</th><th class="num">Costo (CLP)</th></tr>
+        </thead>
+        <tbody data-tabla="registros">
+          {% for r in rows %}
+            <tr data-valor="{{ r.year }}">
+              <td><span class="strong">{{ r.month_label }}</span> <span class="muted">{{ r.year }}</span></td>
+              <td class="num">{{ r.m3_water|floatformat:"2g"|default:"—" }}</td>
+              <td class="num">{{ r.m3_gas|floatformat:"2g"|default:"—" }}</td>
+              <td class="num">{% if r.cost is not None %}${{ r.cost|floatformat:"0g" }}{% else %}—{% endif %}</td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="4" class="empty">
+                <i class="fas fa-inbox"></i>
+                {% if selected_user %}Este cliente aún no tiene registros.{% else %}Selecciona un cliente arriba para ver sus registros.{% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+{{ chart_data|json_script:"datos-graficos" }}
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="{% static 'js/graficos.js' %}"></script>
+<script src="{% static 'js/consumo.js' %}"></script>
+{% endblock %}

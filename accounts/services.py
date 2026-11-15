@@ -13,14 +13,15 @@ por la restriccion de unicidad de la migracion 0013.
 
 from __future__ import annotations
 
+import datetime
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 
-from django.db.models import Avg, Sum
+from django.db.models import Avg, Count, Q, Sum
 from django.utils import timezone
 
 from . import months
-from .models import GasConsumption
+from .models import GasConsumption, User
 from monitoring.models import Consumption
 
 
@@ -325,3 +326,130 @@ def anios_disponibles(user) -> list[int]:
         .distinct()
         .order_by("-year")
     )
+
+
+# ---------------------------------------------------------------------------
+# Resumen del panel de administracion
+# ---------------------------------------------------------------------------
+def _variacion_pct(actual: float, anterior: float) -> float | None:
+    """Variacion porcentual; None si no hay base para comparar."""
+    if not anterior:
+        return None
+    return round((actual - anterior) / anterior * 100, 1)
+
+
+def _totales(qs) -> dict[str, float]:
+    t = qs.aggregate(agua=Sum("m3_water"), gas=Sum("m3_gas"), costo=Sum("cost"))
+    return {k: float(v or 0) for k, v in t.items()}
+
+
+def serie_clientes(year: int) -> dict[str, list[float | None]]:
+    """Consumo sumado de todos los clientes, mes a mes (None = sin registros)."""
+    agua: list[float | None] = [None] * 12
+    gas: list[float | None] = [None] * 12
+    filas = (
+        GasConsumption.objects.filter(year=year)
+        .order_by()
+        .values("month")
+        .annotate(agua=Sum("m3_water"), gas=Sum("m3_gas"))
+    )
+    for fila in filas:
+        posicion = months.a_posicion(fila["month"])
+        if posicion is None:
+            continue
+        agua[posicion] = float(fila["agua"]) if fila["agua"] is not None else None
+        gas[posicion] = float(fila["gas"]) if fila["gas"] is not None else None
+    return {"water": agua, "gas": gas}
+
+
+def resumen_panel(hoy=None) -> dict:
+    """Metricas de la pagina principal del administrador.
+
+    Las comparaciones contra el año anterior usan el mismo periodo
+    (enero..mes actual) para no comparar un año a medias con uno completo.
+    """
+    hoy = hoy or timezone.localdate()
+    anio, previo = hoy.year, hoy.year - 1
+    meses_periodo = list(months.ABREVIATURAS[: hoy.month])
+    mes_actual = months.ABREVIATURAS[hoy.month - 1]
+
+    # ---- Consumo del año vs mismo periodo del año anterior ----
+    actual = _totales(GasConsumption.objects.filter(year=anio))
+    anterior = _totales(GasConsumption.objects.filter(year=previo, month__in=meses_periodo))
+    consumo = {
+        clave: {
+            "actual": actual[clave],
+            "anterior": anterior[clave],
+            "variacion": _variacion_pct(actual[clave], anterior[clave]),
+        }
+        for clave in ("agua", "gas", "costo")
+    }
+
+    # ---- Clientes (sin administradores ni superusuarios) ----
+    clientes = User.objects.filter(role=User.Roles.USER, is_superuser=False)
+    conteo = clientes.aggregate(
+        total=Count("id"), activos=Count("id", filter=Q(is_active=True))
+    )
+    conteo["inactivos"] = conteo["total"] - conteo["activos"]
+    conteo["admins"] = User.objects.exclude(pk__in=clientes.values("pk")).count()
+
+    activos = clientes.filter(is_active=True).select_related("profile")
+    con_registro = set(
+        GasConsumption.objects.filter(year=anio, month=mes_actual)
+        .values_list("user_id", flat=True)
+    )
+    sin_registro = [u for u in activos.order_by("username") if u.pk not in con_registro]
+
+    sin_link = list(
+        activos.filter(Q(profile__link="") | Q(profile__link__isnull=True)).order_by("username")
+    )
+
+    limite = hoy + datetime.timedelta(days=30)
+    mantencion = list(
+        activos.filter(profile__next_maintenance__lte=limite)
+        .order_by("profile__next_maintenance")
+    )
+    vencidas = sum(1 for u in mantencion if u.profile.next_maintenance < hoy)
+
+    # ---- Mayores consumos del año ----
+    ranking = list(
+        GasConsumption.objects.filter(year=anio)
+        .order_by()
+        .values("user_id", "user__username")
+        .annotate(agua=Sum("m3_water"), gas=Sum("m3_gas"), costo=Sum("cost"))
+        .order_by("-gas", "-agua")[:5]
+    )
+    for fila in ranking:
+        for k in ("agua", "gas", "costo"):
+            fila[k] = float(fila[k] or 0)
+    maximo_gas = max((f["gas"] for f in ranking), default=0) or 1
+    for fila in ranking:
+        fila["pct"] = round(fila["gas"] / maximo_gas * 100)
+
+    ultimos = list(
+        GasConsumption.objects.select_related("user").order_by("-id")[:8]
+    )
+
+    return {
+        "anio": anio,
+        "anio_previo": previo,
+        "mes_actual": months.NOMBRES[hoy.month - 1],
+        "periodo": f"ene–{months.ABREVIATURAS[hoy.month - 1]}",
+        "consumo": consumo,
+        "clientes": conteo,
+        "reportados": len(con_registro & set(activos.values_list("pk", flat=True))),
+        "sin_registro": sin_registro,
+        "sin_link": sin_link,
+        "mantencion": mantencion,
+        "mantencion_vencidas": vencidas,
+        "mantencion_proximas": len(mantencion) - vencidas,
+        "ranking": ranking,
+        "ultimos": ultimos,
+        "grafico": {
+            "labels": list(months.ETIQUETAS_CORTAS),
+            "years": {"prev": previo, "now": anio},
+            "hasta_mes": hoy.month,
+            "actual": serie_clientes(anio),
+            "anterior": serie_clientes(previo),
+        },
+    }
